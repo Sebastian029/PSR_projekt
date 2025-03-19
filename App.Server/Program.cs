@@ -1,63 +1,82 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.Net.WebSockets;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace App.Server
+var builder = WebApplication.CreateBuilder(args);
+
+// Enable CORS if needed for your frontend
+builder.Services.AddCors(options =>
 {
-    public class Program
+    options.AddDefaultPolicy(policy =>
     {
-        //public static void Main(string[] args)
-        //{
-        //    var builder = WebApplication.CreateBuilder(args);
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+    });
+});
 
-        //    // Add services to the container.
+var app = builder.Build();
 
-        //    builder.Services.AddControllers();
-        //    // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-        //    builder.Services.AddEndpointsApiExplorer();
-        //    builder.Services.AddSwaggerGen();
+app.UseWebSockets(); // Enable WebSocket support
 
-        //    var app = builder.Build();
+// Apply CORS policy globally
+app.UseCors();
 
-        //    app.UseDefaultFiles();
-        //    app.UseStaticFiles();
-
-        //    // Configure the HTTP request pipeline.
-        //    if (app.Environment.IsDevelopment())
-        //    {
-        //        app.UseSwagger();
-        //        app.UseSwaggerUI();
-        //    }
-
-        //    app.UseHttpsRedirection();
-
-        //    app.UseAuthorization();
-
-
-        //    app.MapControllers();
-
-        //    app.MapFallbackToFile("/index.html");
-
-        //    app.Run();
-        //}
-        static void Main()
+app.Map("/ws", async context =>
+{
+    if (context.WebSockets.IsWebSocketRequest)
+    {
+        try
         {
-            var game = new Checkers();
-            game.PrintBoard();
+            using WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
+            await HandleWebSocket(webSocket);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error accepting WebSocket: {ex.Message}");
+            context.Response.StatusCode = 500; // Internal Server Error
+        }
+    }
+    else
+    {
+        context.Response.StatusCode = 400; // Bad Request
+    }
+});
 
-            while (true)
+async Task HandleWebSocket(WebSocket webSocket)
+{
+    var buffer = new byte[1024 * 4];
+
+    try
+    {
+        while (webSocket.State == WebSocketState.Open)
+        {
+            var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            if (result.MessageType == WebSocketMessageType.Text)
             {
-                Console.Write("Enter move (fromY fromX toY toX): ");
-                var input = Console.ReadLine();
-                var parts = input.Split();
-                if (parts.Length != 4) continue;
+                string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+          
 
-                if (int.TryParse(parts[0], out int fromX) &&
-                    int.TryParse(parts[1], out int fromY) &&
-                    int.TryParse(parts[2], out int toX) &&
-                    int.TryParse(parts[3], out int toY))
-                {
-                    if (game.MovePiece(fromX, fromY, toX, toY))
-                        game.PrintBoard();
-                }
+                // Process the received move (you can update the game state here)
+
+                string response = "SERVER: " + message;
+                byte[] responseBytes = Encoding.UTF8.GetBytes(response);
+                await webSocket.SendAsync(new ArraySegment<byte>(responseBytes), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+            else if (result.MessageType == WebSocketMessageType.Close)
+            {
+                await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
             }
         }
     }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error handling WebSocket: {ex.Message}");
+    }
 }
+
+app.Run("http://localhost:5000");
+
