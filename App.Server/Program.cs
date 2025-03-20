@@ -76,7 +76,7 @@ async Task HandleWebSocket(WebSocket webSocket)
     {
         Console.WriteLine($"Error handling WebSocket: {ex.Message}");
     }
-}
+}   
 
-app.Run("http://localhost:5000");
+app.Run();
 

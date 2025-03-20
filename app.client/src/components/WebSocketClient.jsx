@@ -7,25 +7,24 @@ class WebSocketClient {
             console.log("Connected to WebSocket server");
         };
 
-        // Log messages received from the WebSocket server
-        //this.socket.onmessage = (event) => {
-        //    console.log("Received:", event.data);
-        //};
+        this.socket.onmessage = (event) => {
+           console.log("Received:", event.data);
+        };
 
-        //// Handle WebSocket closure
-        //this.socket.onclose = (event) => {
-        //    console.log("WebSocket disconnected", event);
-        //};
+        // Handle WebSocket closure
+        this.socket.onclose = (event) => {
+           console.log("WebSocket disconnected", event);
+        };
 
-        //// Handle WebSocket errors
-        //this.socket.onerror = (error) => {
-        //    console.error("WebSocket error:", error);
-        //};
+        // Handle WebSocket errors
+        this.socket.onerror = (error) => {
+           console.error("WebSocket error:", error);
+        };
 
-        //// Log connection status on state change
-        //this.socket.onstatechange = () => {
-        //    console.log("WebSocket state changed:", this.socket.readyState);
-        //};
+        // Log connection status on state change
+        this.socket.onstatechange = () => {
+           console.log("WebSocket state changed:", this.socket.readyState);
+        };
     }
 
     // Send a move to the WebSocket server
