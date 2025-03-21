@@ -4,12 +4,13 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Net.WebSockets;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using App.Server;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Enable CORS if needed for your frontend
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -20,33 +21,25 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-app.UseWebSockets(); // Enable WebSocket support
-
-// Apply CORS policy globally
+app.UseWebSockets();
 app.UseCors();
+
+CheckersGame game = new CheckersGame(); // Inicjalizacja gry
 
 app.Map("/ws", async context =>
 {
     if (context.WebSockets.IsWebSocketRequest)
     {
-        try
-        {
-            using WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
-            await HandleWebSocket(webSocket);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error accepting WebSocket: {ex.Message}");
-            context.Response.StatusCode = 500; // Internal Server Error
-        }
+        using WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
+        await HandleWebSocket(webSocket, game);
     }
     else
     {
-        context.Response.StatusCode = 400; // Bad Request
+        context.Response.StatusCode = 400;
     }
 });
 
-async Task HandleWebSocket(WebSocket webSocket)
+async Task HandleWebSocket(WebSocket webSocket, CheckersGame game)
 {
     var buffer = new byte[1024 * 4];
 
@@ -58,13 +51,30 @@ async Task HandleWebSocket(WebSocket webSocket)
             if (result.MessageType == WebSocketMessageType.Text)
             {
                 string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-          
+                Console.WriteLine($"Received: {message}");
 
-                // Process the received move (you can update the game state here)
+                try
+                {
+                    var move = JsonSerializer.Deserialize<MoveRequest>(message);
+                    if (move != null)
+                    {
+                        bool success = game.PlayMove(move.From, move.To);
+                        var response = new GameStateResponse
+                        {
+                            Success = success,
+                            Board = game.GetBoardState()
+                        };
+                       // Console.WriteLine(game.GetBoardState());
 
-                string response = "SERVER: " + message;
-                byte[] responseBytes = Encoding.UTF8.GetBytes(response);
-                await webSocket.SendAsync(new ArraySegment<byte>(responseBytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                        string responseJson = JsonSerializer.Serialize(response);
+                        byte[] responseBytes = Encoding.UTF8.GetBytes(responseJson);
+                        await webSocket.SendAsync(new ArraySegment<byte>(responseBytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error processing message: {ex.Message}");
+                }
             }
             else if (result.MessageType == WebSocketMessageType.Close)
             {
@@ -74,9 +84,22 @@ async Task HandleWebSocket(WebSocket webSocket)
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Error handling WebSocket: {ex.Message}");
+        Console.WriteLine($"WebSocket error: {ex.Message}");
     }
-}   
+}
 
 app.Run();
 
+// Model JSON dla ruchu
+public class MoveRequest
+{
+    public int From { get; set; }
+    public int To { get; set; }
+}
+
+// Model JSON dla odpowiedzi
+public class GameStateResponse
+{
+    public bool Success { get; set; }
+    public string Board { get; set; }
+}
