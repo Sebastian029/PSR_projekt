@@ -5,11 +5,11 @@ using System.Text.Json;
 
 public class CheckersBoard
 {
-    private uint[] board; // 10 x uint = 320 bitów (32 pola x 10 bitów)
+    private uint[] board; // 96 bitów (3 bity na pole, 32 pola)
 
     public CheckersBoard()
     {
-        board = new uint[10]; // Każde pole ma teraz 10 bitów, łatwiejsze operacje
+        board = new uint[3]; // 3 uinty = 96 bitów
         InitializeBoard();
     }
 
@@ -25,89 +25,77 @@ public class CheckersBoard
 
     public byte GetField(int index)
     {
-        int bitPosition = index * 10;
-        int arrayIndex = bitPosition / 32;
-        int bitOffset = bitPosition % 32;
+        int bitPosition = index * 3; // 3 bity na pole
+        int arrayIndex = bitPosition / 32; // Określenie, w którym `uint` znajduje się pole
+        int bitOffset = bitPosition % 32; // Określenie przesunięcia bitu w obrębie tego `uint`
 
-        uint mask = (uint)(0b1111111111 << bitOffset); // 10-bit maska
+        uint mask = (uint)(0b111 << bitOffset); // 3-bitowa maska
         return (byte)((board[arrayIndex] & mask) >> bitOffset);
     }
 
     public void SetField(int index, byte value)
     {
-        int bitPosition = index * 10;
-        int arrayIndex = bitPosition / 32;
-        int bitOffset = bitPosition % 32;
+        int bitPosition = index * 3; // 3 bity na pole
+        int arrayIndex = bitPosition / 32; // Określenie, w którym `uint` znajduje się pole
+        int bitOffset = bitPosition % 32; // Określenie przesunięcia bitu w obrębie tego `uint`
 
-        uint mask = (uint)(0b1111111111 << bitOffset); // 10-bit maska
-        board[arrayIndex] &= ~mask; // Zerowanie pola
-        board[arrayIndex] |= (uint)(value << bitOffset); // Ustawienie nowej wartości
+        uint mask = (uint)(0b111 << bitOffset); // 3-bitowa maska
+        board[arrayIndex] &= ~mask; // Zerowanie bitów w danym miejscu
+        board[arrayIndex] |= (uint)(value << bitOffset); // Ustawienie nowej wartości na pole
     }
 
     public List<int> GetValidMoves(int index)
-{
-    List<int> moves = new List<int>();
-    byte piece = GetField(index);
-    if (piece == (byte)PieceType.Empty) return moves;
+    {
+        List<int> moves = new List<int>();
+        byte piece = GetField(index);
+        if (piece == (byte)PieceType.Empty) return moves;
 
-    // Calculate row and column (0-3 for columns, 0-7 for rows)
-    int row = index / 4;
-    int col = index % 4;
-    
-    // Determine if we're on an even or odd row (affects diagonal calculations)
-    bool isEvenRow = (row % 2 == 0);
-    
-    // Define diagonal offsets based on piece type
-    List<int> offsets = new List<int>();
-    
-    if (piece == (byte)PieceType.WhitePawn)
-    {
-        // White pieces move up (decreasing row)
-        offsets.Add(isEvenRow ? -4 : -3); // Up-left
-        offsets.Add(isEvenRow ? -3 : -4); // Up-right
-    }
-    else if (piece == (byte)PieceType.BlackPawn)
-    {
-        // Black pieces move down (increasing row)
-        offsets.Add(isEvenRow ? 4 : 5);  // Down-left
-        offsets.Add(isEvenRow ? 5 : 4);  // Down-right
-    }
-    else // King can move in all four diagonal directions
-    {
-        // Up directions
-        offsets.Add(isEvenRow ? -4 : -3); // Up-left
-        offsets.Add(isEvenRow ? -3 : -4); // Up-right
-        
-        // Down directions
-        offsets.Add(isEvenRow ? 4 : 5);  // Down-left
-        offsets.Add(isEvenRow ? 5 : 4);  // Down-right
-    }
-    
-    foreach (int offset in offsets)
-    {
-        int targetIndex = index + offset;
-        
-        // Check if target is within board bounds (0-31)
-        if (targetIndex >= 0 && targetIndex < 32)
+        int row = index / 4;
+        int col = index % 4;
+
+        bool isEvenRow = (row % 2 == 0);
+
+        List<int> offsets = new List<int>();
+
+        if (piece == (byte)PieceType.WhitePawn)
         {
-            // Check for invalid edge wrapping
-            int targetRow = targetIndex / 4;
-            int targetCol = targetIndex % 4;
-            
-            // Make sure we don't wrap around edges (row difference should be exactly 1)
-            if (Math.Abs(targetRow - row) == 1)
+            offsets.Add(isEvenRow ? -4 : -3); // Up-left
+            offsets.Add(isEvenRow ? -3 : -4); // Up-right
+        }
+        else if (piece == (byte)PieceType.BlackPawn)
+        {
+            offsets.Add(isEvenRow ? 4 : 5);  // Down-left
+            offsets.Add(isEvenRow ? 5 : 4);  // Down-right
+        }
+        else
+        {
+            offsets.Add(isEvenRow ? -4 : -3); // Up-left
+            offsets.Add(isEvenRow ? -3 : -4); // Up-right
+            offsets.Add(isEvenRow ? 4 : 5);  // Down-left
+            offsets.Add(isEvenRow ? 5 : 4);  // Down-right
+        }
+
+        foreach (int offset in offsets)
+        {
+            int targetIndex = index + offset;
+
+            if (targetIndex >= 0 && targetIndex < 32)
             {
-                // Check if target square is empty
-                if (GetField(targetIndex) == (byte)PieceType.Empty)
+                int targetRow = targetIndex / 4;
+                int targetCol = targetIndex % 4;
+
+                if (Math.Abs(targetRow - row) == 1)
                 {
-                    moves.Add(targetIndex);
+                    if (GetField(targetIndex) == (byte)PieceType.Empty)
+                    {
+                        moves.Add(targetIndex);
+                    }
                 }
             }
         }
+
+        return moves;
     }
-    
-    return moves;
-}
 
     public List<int> GetValidCaptures(int index)
     {
@@ -140,53 +128,49 @@ public class CheckersBoard
         SetField(from, (byte)PieceType.Empty);
         SetField(to, piece);
 
-        // Jeśli ruch to bicie, usuń przeciwnika
-        if (Math.Abs(to - from) > 4) // Bicie przesuwa o więcej niż 4 pola
+        if (Math.Abs(to - from) > 4)
         {
             int middle = (from + to) / 2;
             SetField(middle, (byte)PieceType.Empty);
         }
 
-        // Awansowanie pionka na damkę
         if (piece == (byte)PieceType.WhitePawn && to >= 28) SetField(to, (byte)PieceType.WhiteKing);
         if (piece == (byte)PieceType.BlackPawn && to < 4) SetField(to, (byte)PieceType.BlackKing);
     }
+
     public string SerializeBoard()
     {
-        var boardState = new object[32]; // Use an array of objects to represent each square on the board
+        var boardState = new object[32];
 
         for (int i = 0; i < 32; i++)
         {
-            PieceType pieceType = (PieceType)GetField(i); // Get the piece type at the current field (as an enum)
+            PieceType pieceType = (PieceType)GetField(i);
 
-            // Assign a more human-readable representation of the board state to each square
             switch (pieceType)
             {
                 case PieceType.Empty:
-                    boardState[i] = "empty"; // No piece on the square
+                    boardState[i] = "empty";
                     break;
                 case PieceType.WhitePawn:
-                    boardState[i] = "white"; // White pawn
+                    boardState[i] = "white";
                     break;
                 case PieceType.WhiteKing:
-                    boardState[i] = "white-king"; // White king
+                    boardState[i] = "white-king";
                     break;
                 case PieceType.BlackPawn:
-                    boardState[i] = "black"; // Black pawn
+                    boardState[i] = "black";
                     break;
                 case PieceType.BlackKing:
-                    boardState[i] = "black-king"; // Black king
+                    boardState[i] = "black-king";
                     break;
                 default:
-                    boardState[i] = "empty"; // Fallback if something goes wrong
+                    boardState[i] = "empty";
                     break;
             }
         }
 
-        // Convert the board state to JSON for easy transmission
-        return JsonSerializer.Serialize(boardState); // Convert the boardState array to a JSON string
+        return JsonSerializer.Serialize(boardState);
     }
-
 
     public void PrintBoard()
     {
