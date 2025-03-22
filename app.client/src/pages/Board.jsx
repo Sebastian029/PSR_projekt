@@ -152,7 +152,7 @@ const GameBoard = () => {
                     <p>Select a piece to move</p>
                 )}
             </div>
-            <button onClick={()=>sendMove(-1,-1)}>INIT</button>
+            <button onClick={()=>sendMove(0,1,0,1)}>INIT</button>
         </div>
     );
 };

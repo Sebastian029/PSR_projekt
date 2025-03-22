@@ -1,41 +1,52 @@
 class WebSocketClient {
     constructor(url) {
-        this.socket = new WebSocket(url);
+        this.url = url;
+        this.connect();
+    }
 
-        // Log when the WebSocket connection is opened
+    connect() {
+        this.socket = new WebSocket(this.url);
+
         this.socket.onopen = () => {
             console.log("Connected to WebSocket server");
         };
 
         this.socket.onmessage = (event) => {
-           console.log("Received:", event.data);
+            console.log("Received:", event.data);
         };
 
-        // Handle WebSocket closure
         this.socket.onclose = (event) => {
-           console.log("WebSocket disconnected", event);
+            console.log("WebSocket disconnected", event);
+            setTimeout(() => this.connect(), 3000); // Reconnect after 3 seconds
         };
 
-        // Handle WebSocket errors
         this.socket.onerror = (error) => {
-           console.error("WebSocket error:", error);
-        };
-
-        // Log connection status on state change
-        this.socket.onstatechange = () => {
-           console.log("WebSocket state changed:", this.socket.readyState);
+            console.error("WebSocket error:", error);
         };
     }
 
-    // Send a move to the WebSocket server
     sendMove(move) {
+        function getFieldNumber(x, y) {
+            return Math.floor(y ) * 4 + Math.floor(x / 2);
+        }
+
+        let from = getFieldNumber(move.fromX, move.fromY);
+        let to = getFieldNumber(move.toX, move.toY);
+        let formattedMove = { from, to };
+        
+        
+        console.log("MOVE:", formattedMove);
+
         if (this.socket.readyState === WebSocket.OPEN) {
-            console.log("Sending move:", JSON.stringify(move));
-            this.socket.send(JSON.stringify(move));
+            console.log("Sending move:", JSON.stringify(formattedMove));
+            this.socket.send(JSON.stringify(formattedMove));
         } else {
-            console.error("WebSocket is not open. Ready state:", this.socket.readyState);
+            console.error("WebSocket is not open. Attempting to reconnect...");
+            this.connect();
+            setTimeout(() => this.sendMove(move), 1000);
         }
     }
+
 }
 
 export default WebSocketClient;

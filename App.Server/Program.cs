@@ -51,14 +51,16 @@ async Task HandleWebSocket(WebSocket webSocket, CheckersGame game)
             if (result.MessageType == WebSocketMessageType.Text)
             {
                 string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                Console.WriteLine($"Received: {message}");
+                //Console.WriteLine($"Received raw message: {message}");
+
 
                 try
                 {
                     var move = JsonSerializer.Deserialize<MoveRequest>(message);
+                    Console.WriteLine("BACKEND - FROM " +  move.from + "," + move.to);
                     if (move != null)
                     {
-                        bool success = game.PlayMove(move.From, move.To);
+                        bool success = game.PlayMove(move.from, move.to);
                         var response = new GameStateResponse
                         {
                             Success = success,
@@ -93,8 +95,8 @@ app.Run();
 // Model JSON dla ruchu
 public class MoveRequest
 {
-    public int From { get; set; }
-    public int To { get; set; }
+    public int from { get; set; }
+    public int to { get; set; }
 }
 
 // Model JSON dla odpowiedzi

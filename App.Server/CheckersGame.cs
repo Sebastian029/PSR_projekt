@@ -21,13 +21,14 @@ public class CheckersGame
 
         var moves  = board.GetValidMoves(from);
         var captures = board.GetValidCaptures(from);
-
+        
         if (moves.Contains(to) || captures.Contains(to))
         {
             board.MovePiece(from, to);
             isWhiteTurn = !isWhiteTurn;
             return true;
         }
+        //board.PrintBoard();
         return false;
     }
 
