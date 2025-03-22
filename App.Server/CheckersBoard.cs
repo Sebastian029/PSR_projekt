@@ -45,24 +45,69 @@ public class CheckersBoard
     }
 
     public List<int> GetValidMoves(int index)
+{
+    List<int> moves = new List<int>();
+    byte piece = GetField(index);
+    if (piece == (byte)PieceType.Empty) return moves;
+
+    // Calculate row and column (0-3 for columns, 0-7 for rows)
+    int row = index / 4;
+    int col = index % 4;
+    
+    // Determine if we're on an even or odd row (affects diagonal calculations)
+    bool isEvenRow = (row % 2 == 0);
+    
+    // Define diagonal offsets based on piece type
+    List<int> offsets = new List<int>();
+    
+    if (piece == (byte)PieceType.WhitePawn)
     {
-        List<int> moves = new List<int>();
-        byte piece = GetField(index);
-        if (piece == (byte)PieceType.Empty) return moves;
-
-        int[] directions = piece == (byte)PieceType.WhitePawn ? new int[] { -4, -3 } :
-                           piece == (byte)PieceType.BlackPawn ? new int[] { 4, 3 } :
-                           new int[] { -4, -3, 4, 3 }; // Damka
-
-        foreach (var dir in directions)
-        {
-            int targetIndex = index + dir;
-            if (targetIndex >= 0 && targetIndex < 32 && GetField(targetIndex) == (byte)PieceType.Empty)
-                moves.Add(targetIndex);
-        }
-
-        return moves;
+        // White pieces move up (decreasing row)
+        offsets.Add(isEvenRow ? -4 : -3); // Up-left
+        offsets.Add(isEvenRow ? -3 : -4); // Up-right
     }
+    else if (piece == (byte)PieceType.BlackPawn)
+    {
+        // Black pieces move down (increasing row)
+        offsets.Add(isEvenRow ? 4 : 5);  // Down-left
+        offsets.Add(isEvenRow ? 5 : 4);  // Down-right
+    }
+    else // King can move in all four diagonal directions
+    {
+        // Up directions
+        offsets.Add(isEvenRow ? -4 : -3); // Up-left
+        offsets.Add(isEvenRow ? -3 : -4); // Up-right
+        
+        // Down directions
+        offsets.Add(isEvenRow ? 4 : 5);  // Down-left
+        offsets.Add(isEvenRow ? 5 : 4);  // Down-right
+    }
+    
+    foreach (int offset in offsets)
+    {
+        int targetIndex = index + offset;
+        
+        // Check if target is within board bounds (0-31)
+        if (targetIndex >= 0 && targetIndex < 32)
+        {
+            // Check for invalid edge wrapping
+            int targetRow = targetIndex / 4;
+            int targetCol = targetIndex % 4;
+            
+            // Make sure we don't wrap around edges (row difference should be exactly 1)
+            if (Math.Abs(targetRow - row) == 1)
+            {
+                // Check if target square is empty
+                if (GetField(targetIndex) == (byte)PieceType.Empty)
+                {
+                    moves.Add(targetIndex);
+                }
+            }
+        }
+    }
+    
+    return moves;
+}
 
     public List<int> GetValidCaptures(int index)
     {
