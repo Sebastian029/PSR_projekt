@@ -14,7 +14,6 @@ const GameBoard = () => {
                 console.log("Parsed response:", data);
 
                 if (data.Board) {
-                    // The Board property could be a string (already JSON encoded) or directly an array
                     let boardArray;
 
                     if (typeof data.Board === 'string') {
@@ -39,32 +38,26 @@ const GameBoard = () => {
         };
 
         return () => {
-            // Cleanup: close the WebSocket connection when component unmounts
            // wsClient.socket.close();
         };
     }, []);
 
     const updateBoardFromServer = (boardState) => {
-        // Initialize a new empty board
         const newBoard = Array(8).fill(null).map(() => Array(8).fill("."));
 
-        // Map the 32 playable squares to their positions on the 8x8 board
         const playablePositions = [];
         for (let row = 0; row < 8; row++) {
             for (let col = 0; col < 8; col++) {
-                // Only positions where (row + col) % 2 === 1 are playable in checkers
                 if ((row + col) % 2 === 1) {
                     playablePositions.push({ row, col });
                 }
             }
         }
 
-        // Update the board using the provided state
         boardState.forEach((square, index) => {
             if (index < playablePositions.length) {
                 const { row, col } = playablePositions[index];
 
-                // Convert the piece name to a simple character representation
                 if (square === "empty") {
                     newBoard[row][col] = ".";
                 } else if (square.includes("black")) {
@@ -78,7 +71,6 @@ const GameBoard = () => {
         setBoard(newBoard);
     };
     const handleCellClick = (rowIndex, colIndex) => {
-        // Only allow clicks on valid cells (gray cells in checkers)
         if ((rowIndex + colIndex) % 2 !== 1) {
             return;
         }

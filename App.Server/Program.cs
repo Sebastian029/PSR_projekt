@@ -24,7 +24,7 @@ var app = builder.Build();
 app.UseWebSockets();
 app.UseCors();
 
-CheckersGame game = new CheckersGame(); // Inicjalizacja gry
+CheckersGame game = new CheckersGame(); 
 
 app.Map("/ws", async context =>
 {
@@ -92,14 +92,12 @@ async Task HandleWebSocket(WebSocket webSocket, CheckersGame game)
 
 app.Run();
 
-// Model JSON dla ruchu
 public class MoveRequest
 {
     public int from { get; set; }
     public int to { get; set; }
 }
 
-// Model JSON dla odpowiedzi
 public class GameStateResponse
 {
     public bool Success { get; set; }
