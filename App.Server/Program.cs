@@ -60,7 +60,7 @@ async Task HandleWebSocket(WebSocket webSocket, CheckersGame game)
                     Console.WriteLine("BACKEND - FROM " +  move.from + "," + move.to);
                     if (move != null)
                     {
-                        bool success = true; // Domyœlnie zak³adamy sukces
+                        bool success = true; 
 
                         GameStateResponse response;
 

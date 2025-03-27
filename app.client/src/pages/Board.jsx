@@ -56,10 +56,14 @@ const GameBoard = () => {
                 const { row, col } = playablePositions[index];
                 if (square === "empty") {
                     newBoard[row][col] = ".";
-                } else if (square.includes("black")) {
+                } else if (square === "black") {
                     newBoard[row][col] = "B";
-                } else if (square.includes("white")) {
+                } else if (square === "white") {
                     newBoard[row][col] = "W";
+                } else if (square === "blackKing") {
+                    newBoard[row][col] = "BK";  // Czarna damka
+                } else if (square === "whiteKing") {
+                    newBoard[row][col] = "WK";  // Bia³a damka
                 }
             }
         });
@@ -74,7 +78,7 @@ const GameBoard = () => {
             const { row, col } = selectedPiece;
             sendMove(col, row, colIndex, rowIndex);
             setSelectedPiece(null);
-        } else if (board[rowIndex][colIndex] === "W" || board[rowIndex][colIndex] === "B") {
+        } else if (board[rowIndex][colIndex] !== ".") {
             setSelectedPiece({ row: rowIndex, col: colIndex });
         }
     };
@@ -83,14 +87,9 @@ const GameBoard = () => {
         const move = { fromX, fromY, toX, toY };
         wsClient.sendMove(move);
     };
+
     const sendReset = () => {
         wsClient.sendReset();
-    };
-
-    const resetBoard = () => {
-        setBoard(initialBoard);
-        setSelectedPiece(null);
-        wsClient.sendMove({ reset: true }); // Mo¿esz wys³aæ specjalny sygna³ do serwera, aby tak¿e zresetowa³ stan gry
     };
 
     return (
@@ -109,6 +108,11 @@ const GameBoard = () => {
                             selectedPiece.row === rowIndex &&
                             selectedPiece.col === colIndex;
 
+                        let pieceColor = null;
+                        if (cell === "W") pieceColor = "#fff";
+                        else if (cell === "B") pieceColor = "#000";
+                        else if (cell === "WK" || cell === "BK") pieceColor = "#0f0"; // Zielony dla damki
+
                         return (
                             <div
                                 key={`${rowIndex}-${colIndex}`}
@@ -126,12 +130,12 @@ const GameBoard = () => {
                                 }}
                                 onClick={() => handleCellClick(rowIndex, colIndex)}
                             >
-                                {cell !== "." && (
+                                {pieceColor && (
                                     <div style={{
                                         width: 40,
                                         height: 40,
                                         borderRadius: "50%",
-                                        backgroundColor: cell === "W" ? "#fff" : "#000",
+                                        backgroundColor: pieceColor,
                                         border: "2px solid #333",
                                         boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
                                     }} />
@@ -149,7 +153,7 @@ const GameBoard = () => {
                 )}
             </div>
             <button onClick={() => sendMove(0, 1, 0, 1)}>INIT</button>
-            <button onClick={() => sendReset()} >Reset Board</button>
+            <button onClick={() => sendReset()}>Reset Board</button>
         </div>
     );
 };
