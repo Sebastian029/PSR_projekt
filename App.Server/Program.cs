@@ -57,7 +57,8 @@ async Task HandleWebSocket(WebSocket webSocket, CheckersGame game)
                 try
                 {
                     var move = JsonSerializer.Deserialize<MoveRequest>(message);
-                    Console.WriteLine("BACKEND - FROM " +  move.from + "," + move.to);
+                    Console.WriteLine("BACKEND - FROM TO:" +  move.from + "," + move.to);
+                    Console.WriteLine("MIDDLE: " +  game.GetMiddleIndex(move.from, move.to));
                     if (move != null)
                     {
                         bool success = game.PlayMove(move.from, move.to);
@@ -67,7 +68,7 @@ async Task HandleWebSocket(WebSocket webSocket, CheckersGame game)
                             Board = game.GetBoardState()
                         };
                        // Console.WriteLine(game.GetBoardState());
-
+                        Console.WriteLine("AI:" + game.GetAIMove());
                         string responseJson = JsonSerializer.Serialize(response);
                         byte[] responseBytes = Encoding.UTF8.GetBytes(responseJson);
                         await webSocket.SendAsync(new ArraySegment<byte>(responseBytes), WebSocketMessageType.Text, true, CancellationToken.None);

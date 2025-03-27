@@ -122,6 +122,7 @@ const GameBoard = () => {
                                 }}
                                 onClick={() => handleCellClick(rowIndex, colIndex)}
                             >
+                                
                                 {cell !== "." && (
                                     <div style={{
                                         width: 40,
@@ -129,9 +130,14 @@ const GameBoard = () => {
                                         borderRadius: "50%",
                                         backgroundColor: cell === "W" ? "#fff" : "#000",
                                         border: "2px solid #333",
-                                        boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                                        boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                                        textAlign: "center",
+                                        color:"#eee"
                                     }} />
+                                    
                                 )}
+                                {Math.floor(rowIndex) * 4 + Math.floor( colIndex/ 2)}
+                                
                             </div>
                         );
                     })

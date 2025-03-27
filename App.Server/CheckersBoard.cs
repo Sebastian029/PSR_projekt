@@ -108,7 +108,7 @@ public class CheckersBoard
         foreach (var dir in captureDirections)
         {
             int middleIndex = GetMiddleIndex(index, index + dir);
-            Console.WriteLine(middleIndex);
+          //  Console.WriteLine(middleIndex);
             int targetIndex = index + dir;
             if (targetIndex >= 0 && targetIndex < 32 && GetField(targetIndex) == (byte)PieceType.Empty)
             {
@@ -131,7 +131,7 @@ public class CheckersBoard
         if (Math.Abs(to - from) > 4)
         {
             int middleIndex = GetMiddleIndex(from, to);
-            Console.WriteLine("movepiece middle index: "  + middleIndex);
+           // Console.WriteLine("movepiece middle index: "  + middleIndex);
             SetField(middleIndex, (byte)PieceType.Empty);
         }
 
@@ -183,6 +183,19 @@ public class CheckersBoard
 
         return JsonSerializer.Serialize(boardState);
     }
+    
+    public CheckersBoard Clone()
+    {
+        CheckersBoard clonedBoard = new CheckersBoard();
+    
+        clonedBoard.board = new uint[3];
+        for (int i = 0; i < board.Length; i++)
+        {
+            clonedBoard.board[i] = board[i];
+        }
+
+        return clonedBoard;
+    }
 
     public void PrintBoard()
     {
@@ -209,3 +222,5 @@ public class CheckersBoard
         }
     }
 }
+
+
