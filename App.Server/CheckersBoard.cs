@@ -43,6 +43,11 @@ public class CheckersBoard
         board[arrayIndex] &= ~mask;
         board[arrayIndex] |= (uint)(value << bitOffset);
     }
+    
+    public void RemovePiece(int index)
+    {
+        SetField(index, (byte)PieceType.Empty);
+    }
 
     public List<int> GetValidMoves(int index)
     {
@@ -131,8 +136,15 @@ public class CheckersBoard
         if (Math.Abs(to - from) > 4)
         {
             int middleIndex = GetMiddleIndex(from, to);
-           // Console.WriteLine("movepiece middle index: "  + middleIndex);
-            SetField(middleIndex, (byte)PieceType.Empty);
+
+            int fromRow = from / 4;
+            int toRow = to / 4;
+            int middleRow = middleIndex / 4;
+
+            if ((middleRow > fromRow && middleRow < toRow) || (middleRow < fromRow && middleRow > toRow))
+            {
+                SetField(middleIndex, (byte)PieceType.Empty);
+            }
         }
 
         if (piece == (byte)PieceType.WhitePawn && to >= 28) SetField(to, (byte)PieceType.WhiteKing);
