@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import WebSocketClient from "../components/WebSocketClient";
 
-const wsClient = new WebSocketClient("ws://localhost:5162/ws"); 
+const wsClient = new WebSocketClient("ws://localhost:5162/ws");
 
 const GameBoard = () => {
-    const [board, setBoard] = useState(Array(8).fill(null).map(() => Array(8).fill(".")));
+    const initialBoard = Array(8).fill(null).map(() => Array(8).fill("."));
+    const [board, setBoard] = useState(initialBoard);
     const [selectedPiece, setSelectedPiece] = useState(null);
 
     useEffect(() => {
@@ -36,16 +37,12 @@ const GameBoard = () => {
                 console.error("Error parsing message:", error);
             }
         };
-
-        return () => {
-           // wsClient.socket.close();
-        };
     }, []);
 
     const updateBoardFromServer = (boardState) => {
         const newBoard = Array(8).fill(null).map(() => Array(8).fill("."));
-
         const playablePositions = [];
+
         for (let row = 0; row < 8; row++) {
             for (let col = 0; col < 8; col++) {
                 if ((row + col) % 2 === 1) {
@@ -57,7 +54,6 @@ const GameBoard = () => {
         boardState.forEach((square, index) => {
             if (index < playablePositions.length) {
                 const { row, col } = playablePositions[index];
-
                 if (square === "empty") {
                     newBoard[row][col] = ".";
                 } else if (square.includes("black")) {
@@ -70,10 +66,9 @@ const GameBoard = () => {
 
         setBoard(newBoard);
     };
+
     const handleCellClick = (rowIndex, colIndex) => {
-        if ((rowIndex + colIndex) % 2 !== 1) {
-            return;
-        }
+        if ((rowIndex + colIndex) % 2 !== 1) return;
 
         if (selectedPiece) {
             const { row, col } = selectedPiece;
@@ -87,6 +82,15 @@ const GameBoard = () => {
     const sendMove = (fromX, fromY, toX, toY) => {
         const move = { fromX, fromY, toX, toY };
         wsClient.sendMove(move);
+    };
+    const sendReset = () => {
+        wsClient.sendReset();
+    };
+
+    const resetBoard = () => {
+        setBoard(initialBoard);
+        setSelectedPiece(null);
+        wsClient.sendMove({ reset: true }); // Mo¿esz wys³aæ specjalny sygna³ do serwera, aby tak¿e zresetowa³ stan gry
     };
 
     return (
@@ -144,7 +148,8 @@ const GameBoard = () => {
                     <p>Select a piece to move</p>
                 )}
             </div>
-            <button onClick={()=>sendMove(0,1,0,1)}>INIT</button>
+            <button onClick={() => sendMove(0, 1, 0, 1)}>INIT</button>
+            <button onClick={() => sendReset()} >Reset Board</button>
         </div>
     );
 };

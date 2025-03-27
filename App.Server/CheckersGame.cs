@@ -36,4 +36,11 @@ public class CheckersGame
     {
         return board.SerializeBoard();
     }
+
+    public string GetBoardStateReset()
+    {
+        board.ResetBoard();
+        return board.SerializeBoard();
+    }
+
 }

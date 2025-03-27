@@ -60,13 +60,27 @@ async Task HandleWebSocket(WebSocket webSocket, CheckersGame game)
                     Console.WriteLine("BACKEND - FROM " +  move.from + "," + move.to);
                     if (move != null)
                     {
-                        bool success = game.PlayMove(move.from, move.to);
-                        var response = new GameStateResponse
+                        bool success = true; // Domyœlnie zak³adamy sukces
+
+                        GameStateResponse response;
+
+                        if (move.from == -1 && move.to == -1)
                         {
-                            Success = success,
-                            Board = game.GetBoardState()
-                        };
-                       // Console.WriteLine(game.GetBoardState());
+                            response = new GameStateResponse
+                            {
+                                Success = success,
+                                Board = game.GetBoardStateReset()
+                            };
+                        }
+                        else
+                        {
+                            success = game.PlayMove(move.from, move.to);
+                            response = new GameStateResponse
+                            {
+                                Success = success,
+                                Board = game.GetBoardState()
+                            };
+                        }
 
                         string responseJson = JsonSerializer.Serialize(response);
                         byte[] responseBytes = Encoding.UTF8.GetBytes(responseJson);

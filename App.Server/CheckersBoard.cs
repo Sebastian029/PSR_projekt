@@ -22,7 +22,15 @@ public class CheckersBoard
         for (int i = 20; i < 32; i++) 
             SetField(i, (byte)PieceType.WhitePawn);
     }
-
+    public void ResetBoard()
+    {
+        for (int i = 0; i < 12; i++)
+            SetField(i, (byte)PieceType.BlackPawn);
+        for (int i = 12; i < 20; i++)
+            SetField(i, (byte)PieceType.Empty);
+        for (int i = 20; i < 32; i++)
+            SetField(i, (byte)PieceType.WhitePawn);
+    }
     public byte GetField(int index)
     {
         int bitPosition = index * 3;

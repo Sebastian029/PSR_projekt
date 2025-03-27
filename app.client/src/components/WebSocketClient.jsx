@@ -46,6 +46,12 @@ class WebSocketClient {
             setTimeout(() => this.sendMove(move), 1000);
         }
     }
+    sendReset() {
+        let from = -1;
+        let to = -1;
+        let formattedMove = { from, to };
+        this.socket.send(JSON.stringify(formattedMove))
+    }
 
 }
 
