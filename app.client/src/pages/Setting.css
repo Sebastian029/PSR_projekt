@@ -1,0 +1,60 @@
+.settings-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    width: 100vw;
+    background-color: #222;
+    color: white;
+    text-align: center;
+}
+
+.settings-title {
+    font-size: 2rem;
+    margin-bottom: 20px;
+}
+
+.settings-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 300px;
+}
+
+.settings-option {
+    padding: 10px;
+    font-size: 1rem;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s;
+    background-color: #444;
+    color: white;
+}
+
+    .settings-option:hover {
+        background-color: #666;
+    }
+
+.back-button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: red;
+    color: white;
+    transition: 0.3s;
+}
+
+    .back-button:hover {
+        background-color: darkred;
+    }
+
+ .buttons {
+     display:flex;
+     gap: 10px;
+
+ }

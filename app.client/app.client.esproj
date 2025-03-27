@@ -10,4 +10,9 @@
     <Configurations>Debug;Release</Configurations>
     <Platforms>AnyCPU</Platforms>
   </PropertyGroup>
+  <ItemGroup>
+    <None Remove="src\pages\file.jsx" />
+    <None Remove="src\pages\file1.jsx" />
+    <None Remove="src\pages\Forecasts.jsx" />
+  </ItemGroup>
 </Project>
