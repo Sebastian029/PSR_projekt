@@ -52,6 +52,19 @@ class WebSocketClient {
         let formattedMove = { from, to };
         this.socket.send(JSON.stringify(formattedMove))
     }
+    sendSettings(settings) {
+        if (this.socket.readyState === WebSocket.OPEN) {
+            this.socket.send(JSON.stringify({
+                type: "settings",
+                depth: settings.depth,
+                granulation: settings.granulation,
+                isPerformanceTest: settings.isPerformanceTest !== null ? Boolean(settings.isPerformanceTest) : false
+            }));
+            console.log("Settings sent:", settings);
+        } else {
+            console.error("WebSocket is not open");
+        }
+    }
 
 }
 

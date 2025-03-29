@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using App.Server;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,11 +52,26 @@ async Task HandleWebSocket(WebSocket webSocket, CheckersGame game)
             if (result.MessageType == WebSocketMessageType.Text)
             {
                 string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                //Console.WriteLine($"Received raw message: {message}");
+                Console.WriteLine($"Received raw message: {message}");
 
 
                 try
                 {
+                    if (message.Contains("\"type\":\"settings\""))
+                    {
+                        var options = new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        };
+
+                        var settings = JsonSerializer.Deserialize<SettingsRequest>(message, options);
+                        Console.WriteLine($"Received settings - Depth: {settings.Depth}, Granulation: {settings.Granulation}, performance: {settings.IsPerformanceTest}");
+
+                        // Tutaj ustawiamy wartoœci w grze
+                        game.SetDifficulty(settings.Depth, settings.Granulation, settings.IsPerformanceTest);
+
+                    }
+                    else { 
                     var move = JsonSerializer.Deserialize<MoveRequest>(message);
                     Console.WriteLine("BACKEND - FROM " +  move.from + "," + move.to);
                     if (move != null)
@@ -87,6 +103,7 @@ async Task HandleWebSocket(WebSocket webSocket, CheckersGame game)
                         await webSocket.SendAsync(new ArraySegment<byte>(responseBytes), WebSocketMessageType.Text, true, CancellationToken.None);
                     }
                 }
+                }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Error processing message: {ex.Message}");
@@ -116,4 +133,16 @@ public class GameStateResponse
 {
     public bool Success { get; set; }
     public string Board { get; set; }
+}
+public class SettingsRequest
+{
+
+    [JsonPropertyName("depth")]
+    public int Depth { get; set; }
+
+    [JsonPropertyName("granulation")]
+    public int Granulation { get; set; }
+
+    [JsonPropertyName("isPerformanceTest")] 
+    public bool? IsPerformanceTest { get; set; }
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import WebSocketClient from "../components/WebSocketClient";
 
 const wsClient = new WebSocketClient("ws://localhost:5162/ws");
@@ -6,14 +7,18 @@ const wsClient = new WebSocketClient("ws://localhost:5162/ws");
 const GameBoard = () => {
     const initialBoard = Array(8).fill(null).map(() => Array(8).fill("."));
     const [board, setBoard] = useState(initialBoard);
+    const location = useLocation();
+    const { depth, granulation, isPerformanceTest } = location.state || {};
     const [selectedPiece, setSelectedPiece] = useState(null);
 
+
     useEffect(() => {
-        wsClient.socket.onmessage = (event) => {
+        const handleMessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
                 console.log("Parsed response:", data);
 
+                // Obs³uga planszy
                 if (data.Board) {
                     let boardArray;
 
@@ -33,11 +38,37 @@ const GameBoard = () => {
 
                     updateBoardFromServer(boardArray);
                 }
+
+                // Obs³uga potwierdzenia ustawieñ
+                if (data.type === "settings_confirmation") {
+                    setSettingsConfirmed(true);
+                    console.log("Server confirmed settings:", data);
+                }
+
             } catch (error) {
                 console.error("Error parsing message:", error);
             }
         };
-    }, []);
+
+        wsClient.socket.onmessage = handleMessage;
+        console.log("mucios");
+        console.log(depth);
+        console.log(granulation)
+        // Wysy³amy ustawienia tylko jeœli s¹ dostêpne
+        if (depth && granulation) {
+            console.log("Sending settings to server:", { depth, granulation });
+            wsClient.sendSettings({
+                depth: parseInt(depth),
+                granulation: parseInt(granulation),
+                isPerformanceTest: isPerformanceTest !== undefined ? Boolean(isPerformanceTest) : false
+            });
+        }
+
+        return () => {
+            wsClient.socket.onmessage = null;
+        };
+    }, [depth, granulation]); // Efekt uruchomi siê ponownie gdy depth/granulation siê zmieni¹
+
 
     const updateBoardFromServer = (boardState) => {
         const newBoard = Array(8).fill(null).map(() => Array(8).fill("."));
