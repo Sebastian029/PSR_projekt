@@ -19,7 +19,7 @@ public class CheckersBoard
         for (int i = 12; i < 20; i++)
             SetField(i, (byte)PieceType.Empty);
         for (int i = 20; i < 32; i++)
-            SetField(i, (byte)PieceType.WhitePawn);
+            SetField(i, (byte)PieceType.WhiteKing);
     }
 
     public void ResetBoard()
@@ -29,7 +29,7 @@ public class CheckersBoard
         for (int i = 12; i < 20; i++)
             SetField(i, (byte)PieceType.Empty);
         for (int i = 20; i < 32; i++)
-            SetField(i, (byte)PieceType.WhitePawn);
+            SetField(i, (byte)PieceType.WhiteKing);
     }
 
     public byte GetField(int index)
@@ -53,77 +53,173 @@ public class CheckersBoard
         board[arrayIndex] |= (uint)(value << bitOffset);
     }
 
-    public List<int> GetValidMoves(int index)
+   public List<int> GetValidMoves(int index)
+{
+    List<int> moves = new List<int>();
+    byte piece = GetField(index);
+    if (piece == (byte)PieceType.Empty) return moves;
+
+    int row = index / 4;
+    bool isEvenRow = (row % 2 == 0);
+
+    // For pawns (white and black)
+    if (piece == (byte)PieceType.WhitePawn || piece == (byte)PieceType.BlackPawn)
     {
-        List<int> moves = new List<int>();
-        byte piece = GetField(index);
-        if (piece == (byte)PieceType.Empty) return moves;
-
-        int row = index / 4;
-        bool isEvenRow = (row % 2 == 0);
-
-        // Dla pionków (białych i czarnych)
-        if (piece == (byte)PieceType.WhitePawn || piece == (byte)PieceType.BlackPawn)
+        List<int> offsets = new List<int>();
+        if (piece == (byte)PieceType.WhitePawn)
         {
-            List<int> offsets = new List<int>();
-            if (piece == (byte)PieceType.WhitePawn)
-            {
-                // Białe pionki mogą iść tylko w górę
-                offsets.Add(isEvenRow ? -4 : -5); // Up-left
-                offsets.Add(isEvenRow ? -3 : -4); // Up-right
-            }
-            else // BlackPawn
-            {
-                // Czarne pionki mogą iść tylko w dół
-                offsets.Add(isEvenRow ? 4 : 3);  // Down-left
-                offsets.Add(isEvenRow ? 5 : 4);  // Down-right
-            }
+            // White pawns can only move up
+            offsets.Add(isEvenRow ? -4 : -5); // Up-left
+            offsets.Add(isEvenRow ? -3 : -4); // Up-right
+        }
+        else // BlackPawn
+        {
+            // Black pawns can only move down
+            offsets.Add(isEvenRow ? 4 : 3);  // Down-left
+            offsets.Add(isEvenRow ? 5 : 4);  // Down-right
+        }
 
-            foreach (int offset in offsets)
+        foreach (int offset in offsets)
+        {
+            int targetIndex = index + offset;
+            if (targetIndex >= 0 && targetIndex < 32 && GetField(targetIndex) == (byte)PieceType.Empty)
             {
-                int targetIndex = index + offset;
-                if (targetIndex >= 0 && targetIndex < 32 && GetField(targetIndex) == (byte)PieceType.Empty)
+                int targetRow = targetIndex / 4;
+                if (Math.Abs(targetRow - row) == 1)
                 {
-                    int targetRow = targetIndex / 4;
-                    if (Math.Abs(targetRow - row) == 1)
-                    {
-                        // Sprawdź czy ruch nie wychodzi poza planszę (dla skrajnych kolumn)
-                        int col = index % 4;
-                        if ((col == 0 && offset == -5) || (col == 3 && offset == -3)) continue;
-                        if ((col == 0 && offset == 3) || (col == 3 && offset == 5)) continue;
+                    // Check if the move doesn't go off the board (for edge columns)
+                    int col = index % 4;
+                    if ((col == 0 && offset == -5) || (col == 3 && offset == -3)) continue;
+                    if ((col == 0 && offset == 3) || (col == 3 && offset == 5)) continue;
 
-                        moves.Add(targetIndex);
-                    }
+                    moves.Add(targetIndex);
                 }
             }
         }
-        else // Dla dam (królów)
-        {
-            // Kierunki ruchu damki
-            int[] kingDirections = isEvenRow
-                ? new int[] { -4, -3, 4, 5 }    // Even row directions
-                : new int[] { -5, -4, 3, 4 };   // Odd row directions
-
-            foreach (int dir in kingDirections)
-            {
-                int targetIndex = index + dir;
-                if (targetIndex >= 0 && targetIndex < 32 && GetField(targetIndex) == (byte)PieceType.Empty)
-                {
-                    int targetRow = targetIndex / 4;
-                    if (Math.Abs(targetRow - row) == 1)
-                    {
-                        // Sprawdź czy ruch nie wychodzi poza planszę (dla skrajnych kolumn)
-                        int col = index % 4;
-                        if ((col == 0 && (dir == -5 || dir == 3)) || (col == 3 && (dir == -3 || dir == 5))) continue;
-
-                        moves.Add(targetIndex);
-                    }
-                }
-            }
-        }
-
-        return moves;
     }
+    else // For kings
+    {
+        List<int> offsets = new List<int>();
+        foreach (var offset in offsets)
+        {
+            Console.WriteLine(offset);
+        }
+        
+        offsets.Add(isEvenRow ? -4 : -5); // Up-left
+        offsets.Add(isEvenRow ? -3 : -4); // Up-right
+        offsets.Add(isEvenRow ? 4 : 3);  // Down-left
+        offsets.Add(isEvenRow ? 5 : 4);  // Down-right
+
+
+        foreach (int offset in offsets)
+        {
+            if ((isEvenRow & offset == -4) || (!isEvenRow & offset == -5)) 
+            {
+                int tmp = index;
+                while (tmp + offset >= 0)
+                {
+                    bool parity = (tmp / 4) % 2 == 0 ? true : false;
+                    if (parity & Math.Abs(tmp % 4 - (tmp - 4) % 4) <= 1)
+                    {
+                        moves.Add(tmp - 4);
+                        tmp -= 4;
+                        Console.WriteLine(tmp);
+                    }
+                    else if (!parity & Math.Abs(tmp % 4 - (tmp - 5) % 4) <= 1)
+                    {
+                        moves.Add(tmp - 5);
+                        tmp -= 5;
+                        Console.WriteLine(tmp);
+                    }
+                    else break;
+
+
+                }
+            }
+
+            if ((isEvenRow & offset == -3) || (!isEvenRow & offset == -4)) 
+            {
+                int tmp = index;
+                while (tmp + offset >= 0)
+                {
+                    bool parity = (tmp / 4) % 2 == 0 ? true : false;
+                    if (parity & Math.Abs(tmp % 4 - (tmp - 3) % 4) <= 1)
+                    {
+                        moves.Add(tmp - 3);
+                        tmp -= 3;
+                        Console.WriteLine(tmp);
+                    }
+                    else if (!parity & Math.Abs(tmp % 4 - (tmp - 4) % 4) <= 1)
+                    {
+                        moves.Add(tmp - 4);
+                        tmp -= 4;
+                        Console.WriteLine(tmp);
+
+                    }
+                    else break;
+
+
+                }
+            }
+
+            if ((isEvenRow & offset == 4) || (!isEvenRow & offset == 3)) 
+            {
+                int tmp = index;
+                while (tmp + offset < 32) 
+                {
+                    bool parity = (tmp / 4) % 2 == 0 ? true : false;
+                    if (parity & Math.Abs(tmp % 4 - (tmp + 4) % 4) <= 1)
+                    {
+                        moves.Add(tmp + 4);
+                        tmp += 4;
+                        Console.WriteLine(tmp);
+                    }
+                    else if (!parity & Math.Abs(tmp % 4 - (tmp + 3) % 4) <= 1)
+                    {
+                        moves.Add(tmp + 3);
+                        tmp += 3;
+                        Console.WriteLine(tmp);
+                    }
+                    else break;
+                }
+            }
+
+            if ((isEvenRow & offset == 5) || (!isEvenRow & offset == 4)) 
+            {
+                int tmp = index;
+                while (tmp + offset < 32) 
+                {
+                    bool parity = (tmp / 4) % 2 == 0 ? true : false;
+                    if (parity & Math.Abs(tmp % 4 - (tmp + 5) % 4) <= 1)
+                    {
+                        moves.Add(tmp + 5);
+                        tmp += 5;
+                        Console.WriteLine(tmp);
+                    }
+                    else if (!parity & Math.Abs(tmp % 4 - (tmp + 4) % 4) <= 1)
+                    {
+                        moves.Add(tmp + 4);
+                        tmp += 4;
+                        Console.WriteLine(tmp);
+                    }
+                    else break;
+                }
+
+
+
+
+            }
+        }
+
+    }
+    
+    foreach (int move in moves)
+    {
+        Console.WriteLine(move);
+    }
+
+    return moves;
+}
 
     public List<int> GetValidCaptures(int index)
     {

@@ -63,7 +63,7 @@ const GameBoard = () => {
                 } else if (square === "blackKing") {
                     newBoard[row][col] = "BK";  // Czarna damka
                 } else if (square === "whiteKing") {
-                    newBoard[row][col] = "WK";  // Bia³a damka
+                    newBoard[row][col] = "WK";  // Biaï¿½a damka
                 }
             }
         });
@@ -140,6 +140,8 @@ const GameBoard = () => {
                                         boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
                                     }} />
                                 )}
+                                {Math.floor(rowIndex) * 4 + Math.floor( colIndex/ 2)}
+
                             </div>
                         );
                     })
