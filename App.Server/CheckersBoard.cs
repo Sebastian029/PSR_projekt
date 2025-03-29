@@ -118,6 +118,10 @@ public class CheckersBoard
                 int tmp = index;
                 while (tmp + offset >= 0)
                 {
+                    if(GetField(tmp + offset) != (byte)PieceType.Empty)
+                    {
+                        break;
+                    }
                     bool parity = (tmp / 4) % 2 == 0 ? true : false;
                     if (parity & Math.Abs(tmp % 4 - (tmp - 4) % 4) <= 1)
                     {
@@ -142,6 +146,10 @@ public class CheckersBoard
                 int tmp = index;
                 while (tmp + offset >= 0)
                 {
+                    if(GetField(tmp + offset) != (byte)PieceType.Empty)
+                    {
+                        break;
+                    }
                     bool parity = (tmp / 4) % 2 == 0 ? true : false;
                     if (parity & Math.Abs(tmp % 4 - (tmp - 3) % 4) <= 1)
                     {
@@ -167,6 +175,10 @@ public class CheckersBoard
                 int tmp = index;
                 while (tmp + offset < 32) 
                 {
+                    if(GetField(tmp + offset) != (byte)PieceType.Empty)
+                    {
+                        break;
+                    }
                     bool parity = (tmp / 4) % 2 == 0 ? true : false;
                     if (parity & Math.Abs(tmp % 4 - (tmp + 4) % 4) <= 1)
                     {
@@ -189,6 +201,10 @@ public class CheckersBoard
                 int tmp = index;
                 while (tmp + offset < 32) 
                 {
+                    if(GetField(tmp + offset) != (byte)PieceType.Empty)
+                    {
+                        break;
+                    }
                     bool parity = (tmp / 4) % 2 == 0 ? true : false;
                     if (parity & Math.Abs(tmp % 4 - (tmp + 5) % 4) <= 1)
                     {
