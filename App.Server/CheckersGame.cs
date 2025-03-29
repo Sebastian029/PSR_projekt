@@ -4,13 +4,24 @@
     private bool isWhiteTurn;
     private int? mustCaptureFrom = null;
     private List<int> captureSequence = new List<int>();
+    private int _depth;
+    private int _granulation;
+    private bool? _isPerformanceTest;
 
+    
     public CheckersGame()
     {
         board = new CheckersBoard();
         isWhiteTurn = true;
     }
-
+    public void SetDifficulty(int depth, int granulation, bool? isPerformanceTest)
+    {
+        _depth = depth;
+        _granulation = granulation;
+        _isPerformanceTest = isPerformanceTest;
+        // Tutaj możesz dodać logikę aktualizacji gry
+        Console.WriteLine($"Game difficulty set to Depth: {depth}, Granulation: {granulation}, perfomance: {isPerformanceTest}");
+    }
     public bool PlayMove(int from, int to)
     {
         // Sprawdź czy gracz może wykonać ruch
