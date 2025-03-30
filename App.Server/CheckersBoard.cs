@@ -313,7 +313,7 @@ public class CheckersBoard
 
                         if ((GetField(tmp) == (byte)PieceType.BlackPawn || GetField(tmp) == (byte)PieceType.WhitePawn ) && found < 0 )
                         {
-                            if (GetField(tmp + nextOffset) == (byte)PieceType.Empty)
+                            if (GetField(tmp + nextOffset) == (byte)PieceType.Empty & tmp + nextOffset >=0 & tmp + nextOffset <32 )
                             {
                                 found = tmp + nextOffset;
                                 Console.WriteLine("BEAT piece: "  + tmp);
