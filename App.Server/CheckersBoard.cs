@@ -100,10 +100,6 @@ public class CheckersBoard
     else // For kings
     {
         List<int> offsets = new List<int>();
-        foreach (var offset in offsets)
-        {
-            Console.WriteLine(offset);
-        }
         
         offsets.Add(isEvenRow ? -4 : -5); // Up-left
         offsets.Add(isEvenRow ? -3 : -4); // Up-right
@@ -127,13 +123,11 @@ public class CheckersBoard
                     {
                         moves.Add(tmp - 4);
                         tmp -= 4;
-                        Console.WriteLine(tmp);
                     }
                     else if (!parity & Math.Abs(tmp % 4 - (tmp - 5) % 4) <= 1)
                     {
                         moves.Add(tmp - 5);
                         tmp -= 5;
-                        Console.WriteLine(tmp);
                     }
                     else break;
 
@@ -155,13 +149,11 @@ public class CheckersBoard
                     {
                         moves.Add(tmp - 3);
                         tmp -= 3;
-                        Console.WriteLine(tmp);
                     }
                     else if (!parity & Math.Abs(tmp % 4 - (tmp - 4) % 4) <= 1)
                     {
                         moves.Add(tmp - 4);
                         tmp -= 4;
-                        Console.WriteLine(tmp);
 
                     }
                     else break;
@@ -184,13 +176,11 @@ public class CheckersBoard
                     {
                         moves.Add(tmp + 4);
                         tmp += 4;
-                        Console.WriteLine(tmp);
                     }
                     else if (!parity & Math.Abs(tmp % 4 - (tmp + 3) % 4) <= 1)
                     {
                         moves.Add(tmp + 3);
                         tmp += 3;
-                        Console.WriteLine(tmp);
                     }
                     else break;
                 }
@@ -210,13 +200,11 @@ public class CheckersBoard
                     {
                         moves.Add(tmp + 5);
                         tmp += 5;
-                        Console.WriteLine(tmp);
                     }
                     else if (!parity & Math.Abs(tmp % 4 - (tmp + 4) % 4) <= 1)
                     {
                         moves.Add(tmp + 4);
                         tmp += 4;
-                        Console.WriteLine(tmp);
                     }
                     else break;
                 }
@@ -231,7 +219,7 @@ public class CheckersBoard
     
     foreach (int move in moves)
     {
-        Console.WriteLine(move);
+    //    Console.WriteLine(move);
     }
 
     return moves;
@@ -250,31 +238,102 @@ public class CheckersBoard
         int[] captureDirections = isEvenRow
             ? new int[] { -7, -9, 7, 9 }
             : new int[] { -9, -7, 9, 7 };
-
-        foreach (var dir in captureDirections)
+        if (GetField(index) == (byte)PieceType.BlackPawn || index == (byte)PieceType.WhitePawn)
         {
-            int targetIndex = index + dir;
-            if (targetIndex >= 0 && targetIndex < 32)
+            foreach (var dir in captureDirections)
             {
-                // Sprawdź czy cel jest pusty
-                if (GetField(targetIndex) == (byte)PieceType.Empty)
+                int targetIndex = index + dir;
+                if (targetIndex >= 0 && targetIndex < 32)
                 {
-                    int middleIndex = GetMiddleIndex(index, targetIndex);
-                    if (middleIndex >= 0 && middleIndex < 32)
+                    // Sprawdź czy cel jest pusty
+                    if (GetField(targetIndex) == (byte)PieceType.Empty)
                     {
-                        byte capturedPiece = GetField(middleIndex);
-                        if (capturedPiece != (byte)PieceType.Empty && !IsSameColor(piece, capturedPiece))
+                        int middleIndex = GetMiddleIndex(index, targetIndex);
+                        if (middleIndex >= 0 && middleIndex < 32)
                         {
-                            // Sprawdź czy ruch nie wychodzi poza planszę
-                            int col = index % 4;
-                            if ((col == 0 && (dir == -9 || dir == 7)) || (col == 3 && (dir == -7 || dir == 9))) continue;
+                            byte capturedPiece = GetField(middleIndex);
+                            if (capturedPiece != (byte)PieceType.Empty && !IsSameColor(piece, capturedPiece))
+                            {
+                                // Sprawdź czy ruch nie wychodzi poza planszę
+                                int col = index % 4;
+                                if ((col == 0 && (dir == -9 || dir == 7)) || (col == 3 && (dir == -7 || dir == 9)))
+                                    continue;
 
-                            // Usunięto ograniczenie kierunku dla pionków - mogą bić w obie strony
-                            captures.Add(targetIndex);
+                                // Usunięto ograniczenie kierunku dla pionków - mogą bić w obie strony
+                                captures.Add(targetIndex);
+                            }
                         }
                     }
                 }
             }
+        }
+        else // kings
+        {
+            List<int> offsets = new List<int>();
+            List<int> moves = new List<int>();
+            List<int> kingCaptures = new List<int>();
+                
+            offsets.Add(isEvenRow ? -4 : -5); // Up-left
+            offsets.Add(isEvenRow ? -3 : -4); // Up-right
+            offsets.Add(isEvenRow ? 4 : 3);  // Down-left
+            offsets.Add(isEvenRow ? 5 : 4);  // Down-right
+
+
+            foreach (int offset in offsets)
+            {
+                if ((isEvenRow & offset == -4) || (!isEvenRow & offset == -5))
+                {
+                    int found = -1;
+                    int nextOffset = 0;
+                    int tmp = index;
+                    while (tmp + offset >= 0)
+                    {
+                        // if(GetField(tmp + offset) != (byte)PieceType.Empty)
+                        // {
+                        //     break;
+                        // }
+                        bool parity = (tmp / 4) % 2 == 0 ? true : false;
+                        if (parity & Math.Abs(tmp % 4 - (tmp - 4) % 4) <= 1)
+                        {
+                            moves.Add(tmp - 4);
+                            tmp -= 4;
+                            nextOffset = -5;
+
+
+
+                        }
+                        else if (!parity & Math.Abs(tmp % 4 - (tmp - 5) % 4) <= 1)
+                        {
+                            moves.Add(tmp - 5);
+                            tmp -= 5;
+                            nextOffset = -4;
+                         
+                        }
+                        else break;
+
+                        if ((GetField(tmp) == (byte)PieceType.BlackPawn || GetField(tmp) == (byte)PieceType.WhitePawn ) && found < 0 )
+                        {
+                            if (GetField(tmp + nextOffset) == (byte)PieceType.Empty)
+                            {
+                                found = tmp + nextOffset;
+                                Console.WriteLine("BEAT piece: "  + tmp);
+                                Console.WriteLine("FOUND empty : " + found);
+                                captures.Add(found);
+                            }
+                        }
+                        
+
+
+                    }
+                }
+               
+            }
+
+            foreach (int move in moves)
+            {
+                Console.WriteLine(move);
+            }
+            Console.WriteLine("---------");
         }
 
         return captures;
