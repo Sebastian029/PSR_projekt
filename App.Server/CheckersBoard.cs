@@ -99,122 +99,61 @@ public class CheckersBoard
     }
     else // For kings
     {
-        List<int> offsets = new List<int>();
+        // Define the four diagonal directions based on row parity
+        int[] upLeftOffset = isEvenRow ? new int[] { -4 } : new int[] { -5 };
+        int[] upRightOffset = isEvenRow ? new int[] { -3 } : new int[] { -4 };
+        int[] downLeftOffset = isEvenRow ? new int[] { 4 } : new int[] { 3 };
+        int[] downRightOffset = isEvenRow ? new int[] { 5 } : new int[] { 4 };
         
-        offsets.Add(isEvenRow ? -4 : -5); // Up-left
-        offsets.Add(isEvenRow ? -3 : -4); // Up-right
-        offsets.Add(isEvenRow ? 4 : 3);  // Down-left
-        offsets.Add(isEvenRow ? 5 : 4);  // Down-right
-
-
-        foreach (int offset in offsets)
+        // Pairs of direction and corresponding offset
+        var directions = new[] 
         {
-            if ((isEvenRow & offset == -4) || (!isEvenRow & offset == -5)) 
+            (Direction: "UpLeft", Offsets: upLeftOffset),
+            (Direction: "UpRight", Offsets: upRightOffset),
+            (Direction: "DownLeft", Offsets: downLeftOffset),
+            (Direction: "DownRight", Offsets: downRightOffset)
+        };
+
+        // Process each direction
+        foreach (var direction in directions)
+        {
+            int offset = direction.Offsets[0];
+            int currentIndex = index;
+            
+            // Continue in this direction until we hit a boundary or a piece
+            while (true)
             {
-                int tmp = index;
-                while (tmp + offset >= 0)
+                int nextIndex = currentIndex + offset;
+                
+                // Check bounds
+                if ((offset < 0 && nextIndex < 0) || (offset > 0 && nextIndex >= 32))
+                    break;
+                    
+                // Check if square is occupied
+                if (GetField(nextIndex) != (byte)PieceType.Empty)
+                    break;
+                    
+                // Calculate row parity for the current position
+                bool currentParity = (currentIndex / 4) % 2 == 0;
+                
+                // Calculate the column change to ensure the move is valid
+                int currentCol = currentIndex % 4;
+                int nextCol = nextIndex % 4;
+                
+                // Check if the move is valid based on board topology
+                if (Math.Abs(currentCol - nextCol) <= 1)
                 {
-                    if(GetField(tmp + offset) != (byte)PieceType.Empty)
-                    {
-                        break;
-                    }
-                    bool parity = (tmp / 4) % 2 == 0 ? true : false;
-                    if (parity & Math.Abs(tmp % 4 - (tmp - 4) % 4) <= 1)
-                    {
-                        moves.Add(tmp - 4);
-                        tmp -= 4;
-                    }
-                    else if (!parity & Math.Abs(tmp % 4 - (tmp - 5) % 4) <= 1)
-                    {
-                        moves.Add(tmp - 5);
-                        tmp -= 5;
-                    }
-                    else break;
-
-
+                    // Valid move - add it to the list
+                    moves.Add(nextIndex);
+                    currentIndex = nextIndex;
                 }
-            }
-
-            if ((isEvenRow & offset == -3) || (!isEvenRow & offset == -4)) 
-            {
-                int tmp = index;
-                while (tmp + offset >= 0)
+                else
                 {
-                    if(GetField(tmp + offset) != (byte)PieceType.Empty)
-                    {
-                        break;
-                    }
-                    bool parity = (tmp / 4) % 2 == 0 ? true : false;
-                    if (parity & Math.Abs(tmp % 4 - (tmp - 3) % 4) <= 1)
-                    {
-                        moves.Add(tmp - 3);
-                        tmp -= 3;
-                    }
-                    else if (!parity & Math.Abs(tmp % 4 - (tmp - 4) % 4) <= 1)
-                    {
-                        moves.Add(tmp - 4);
-                        tmp -= 4;
-
-                    }
-                    else break;
-
-
+                    // Invalid move - diagonal doesn't continue properly
+                    break;
                 }
-            }
-
-            if ((isEvenRow & offset == 4) || (!isEvenRow & offset == 3)) 
-            {
-                int tmp = index;
-                while (tmp + offset < 32) 
-                {
-                    if(GetField(tmp + offset) != (byte)PieceType.Empty)
-                    {
-                        break;
-                    }
-                    bool parity = (tmp / 4) % 2 == 0 ? true : false;
-                    if (parity & Math.Abs(tmp % 4 - (tmp + 4) % 4) <= 1)
-                    {
-                        moves.Add(tmp + 4);
-                        tmp += 4;
-                    }
-                    else if (!parity & Math.Abs(tmp % 4 - (tmp + 3) % 4) <= 1)
-                    {
-                        moves.Add(tmp + 3);
-                        tmp += 3;
-                    }
-                    else break;
-                }
-            }
-
-            if ((isEvenRow & offset == 5) || (!isEvenRow & offset == 4)) 
-            {
-                int tmp = index;
-                while (tmp + offset < 32) 
-                {
-                    if(GetField(tmp + offset) != (byte)PieceType.Empty)
-                    {
-                        break;
-                    }
-                    bool parity = (tmp / 4) % 2 == 0 ? true : false;
-                    if (parity & Math.Abs(tmp % 4 - (tmp + 5) % 4) <= 1)
-                    {
-                        moves.Add(tmp + 5);
-                        tmp += 5;
-                    }
-                    else if (!parity & Math.Abs(tmp % 4 - (tmp + 4) % 4) <= 1)
-                    {
-                        moves.Add(tmp + 4);
-                        tmp += 4;
-                    }
-                    else break;
-                }
-
-
-
-
             }
         }
-
     }
     
     foreach (int move in moves)
@@ -267,76 +206,161 @@ public class CheckersBoard
                 }
             }
         }
-        else // kings
+       else // For kings
+{
+    // Define the four diagonal directions based on row parity
+    int[] upLeftOffset = isEvenRow ? new int[] { -4 } : new int[] { -5 };
+    int[] upRightOffset = isEvenRow ? new int[] { -3 } : new int[] { -4 };
+    int[] downLeftOffset = isEvenRow ? new int[] { 4 } : new int[] { 3 };
+    int[] downRightOffset = isEvenRow ? new int[] { 5 } : new int[] { 4 };
+    
+    // Pairs of direction and corresponding offset
+    var directions = new[] 
+    {
+        (Direction: "UpLeft", Offsets: upLeftOffset, NextOffsets: isEvenRow ? -5 : -4),
+        (Direction: "UpRight", Offsets: upRightOffset, NextOffsets: isEvenRow ? -4 : -3),
+        (Direction: "DownLeft", Offsets: downLeftOffset, NextOffsets: isEvenRow ? 3 : 4),
+        (Direction: "DownRight", Offsets: downRightOffset, NextOffsets: isEvenRow ? 4 : 5)
+    };
+
+    List<int> moves = new List<int>();
+
+    // Process each direction
+    foreach (var direction in directions)
+    {
+        int offset = direction.Offsets[0];
+        int nextOffset = direction.NextOffsets;
+        int currentIndex = index;
+        int found = -1;
+
+        // Continue in this direction until we hit a boundary or a piece
+        while (true)
         {
-            List<int> offsets = new List<int>();
-            List<int> moves = new List<int>();
-            List<int> kingCaptures = new List<int>();
-                
-            offsets.Add(isEvenRow ? -4 : -5); // Up-left
-            offsets.Add(isEvenRow ? -3 : -4); // Up-right
-            offsets.Add(isEvenRow ? 4 : 3);  // Down-left
-            offsets.Add(isEvenRow ? 5 : 4);  // Down-right
-
-
-            foreach (int offset in offsets)
+            // Calculate row parity for the current position
+            bool currentParity = (currentIndex / 4) % 2 == 0;
+            int nextIndex;
+            
+            // Determine next index based on parity and direction
+            if (direction.Direction == "UpLeft")
             {
-                if ((isEvenRow & offset == -4) || (!isEvenRow & offset == -5))
+                if (currentParity && Math.Abs(currentIndex % 4 - (currentIndex - 4) % 4) <= 1)
                 {
-                    int found = -1;
-                    int nextOffset = 0;
-                    int tmp = index;
-                    while (tmp + offset >= 0)
+                    nextIndex = currentIndex - 4;
+                    nextOffset = -5;
+                }
+                else if (!currentParity && Math.Abs(currentIndex % 4 - (currentIndex - 5) % 4) <= 1)
+                {
+                    nextIndex = currentIndex - 5;
+                    nextOffset = -4;
+                }
+                else break;
+            }
+            else if (direction.Direction == "UpRight")
+            {
+                if (currentParity && Math.Abs(currentIndex % 4 - (currentIndex - 3) % 4) <= 1)
+                {
+                    nextIndex = currentIndex - 3;
+                    nextOffset = -4;
+                }
+                else if (!currentParity && Math.Abs(currentIndex % 4 - (currentIndex - 4) % 4) <= 1)
+                {
+                    nextIndex = currentIndex - 4;
+                    nextOffset = -3;
+                }
+                else break;
+            }
+            else if (direction.Direction == "DownLeft")
+            {
+                if (currentParity && Math.Abs(currentIndex % 4 - (currentIndex + 4) % 4) <= 1)
+                {
+                    nextIndex = currentIndex + 4;
+                    nextOffset = 3;
+                }
+                else if (!currentParity && Math.Abs(currentIndex % 4 - (currentIndex + 3) % 4) <= 1)
+                {
+                    nextIndex = currentIndex + 3;
+                    nextOffset = 4;
+                }
+                else break;
+            }
+            else // DownRight
+            {
+                if (currentParity && Math.Abs(currentIndex % 4 - (currentIndex + 5) % 4) <= 1)
+                {
+                    nextIndex = currentIndex + 5;
+                    nextOffset = 4;
+                }
+                else if (!currentParity && Math.Abs(currentIndex % 4 - (currentIndex + 4) % 4) <= 1)
+                {
+                    nextIndex = currentIndex + 4;
+                    nextOffset = 5;
+                }
+                else break;
+            }
+            
+            // Check bounds
+            if (nextIndex < 0 || nextIndex >= 32)
+                break;
+                
+            // Check if square is occupied
+            byte pieceAtNextIndex = GetField(nextIndex);
+            
+            if (pieceAtNextIndex == (byte)PieceType.Empty)
+            {
+                // Empty square - add to normal moves
+                moves.Add(nextIndex);
+                currentIndex = nextIndex;
+                continue;
+            }
+            
+            // Not empty - check for capture opportunity
+            if (!IsSameColor(piece, pieceAtNextIndex) && found < 0)
+            {
+                // Calculate the landing square after the capture
+                bool nextParity = (nextIndex / 4) % 2 == 0;
+                int captureIndex = -1;
+                
+                if (direction.Direction == "UpLeft")
+                {
+                    captureIndex = nextParity ? nextIndex - 4 : nextIndex - 5;
+                }
+                else if (direction.Direction == "UpRight")
+                {
+                    captureIndex = nextParity ? nextIndex - 3 : nextIndex - 4;
+                }
+                else if (direction.Direction == "DownLeft")
+                {
+                    captureIndex = nextParity ? nextIndex + 4 : nextIndex + 3;
+                }
+                else // DownRight
+                {
+                    captureIndex = nextParity ? nextIndex + 5 : nextIndex + 4;
+                }
+                
+                // Make sure the capture landing spot is valid
+                if (captureIndex >= 0 && captureIndex < 32 && GetField(captureIndex) == (byte)PieceType.Empty)
+                {
+                    // Check if the landing square is in the correct direction (column check)
+                    int nextCol = nextIndex % 4;
+                    int captureCol = captureIndex % 4;
+                    
+                    if (Math.Abs(nextCol - captureCol) <= 1)
                     {
-                        // if(GetField(tmp + offset) != (byte)PieceType.Empty)
-                        // {
-                        //     break;
-                        // }
-                        bool parity = (tmp / 4) % 2 == 0 ? true : false;
-                        if (parity & Math.Abs(tmp % 4 - (tmp - 4) % 4) <= 1)
-                        {
-                            moves.Add(tmp - 4);
-                            tmp -= 4;
-                            nextOffset = -5;
-
-
-
-                        }
-                        else if (!parity & Math.Abs(tmp % 4 - (tmp - 5) % 4) <= 1)
-                        {
-                            moves.Add(tmp - 5);
-                            tmp -= 5;
-                            nextOffset = -4;
-                         
-                        }
-                        else break;
-
-                        if ((GetField(tmp) == (byte)PieceType.BlackPawn || GetField(tmp) == (byte)PieceType.WhitePawn ) && found < 0 )
-                        {
-                            if (GetField(tmp + nextOffset) == (byte)PieceType.Empty & tmp + nextOffset >=0 & tmp + nextOffset <32 )
-                            {
-                                found = tmp + nextOffset;
-                                Console.WriteLine("BEAT piece: "  + tmp);
-                                Console.WriteLine("FOUND empty : " + found);
-                                Console.WriteLine("BY : " + index);
-                                Console.WriteLine("----");
-                                captures.Add((tmp+offset, tmp));
-                            }
-                        }
-                        
-
-
+                        found = captureIndex;
+                        Console.WriteLine("EMPTY " + captureIndex);
+                        Console.WriteLine("PIECE " + nextIndex);
+                        Console.WriteLine("BY " + index);
+                        Console.WriteLine("----");
+                        captures.Add((captureIndex, nextIndex)); // Add capture: (target, captured piece)
                     }
                 }
-               
             }
-
-            foreach (int move in moves)
-            {
-              //  Console.WriteLine(move);
-            }
-          //  Console.WriteLine("---------");
+            
+            // We found a piece, so stop exploring this direction
+            break;
         }
+    }
+}
 
         return captures;
     }
