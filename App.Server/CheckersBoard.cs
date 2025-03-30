@@ -318,6 +318,8 @@ public class CheckersBoard
                                 found = tmp + nextOffset;
                                 Console.WriteLine("BEAT piece: "  + tmp);
                                 Console.WriteLine("FOUND empty : " + found);
+                                Console.WriteLine("BY : " + index);
+                                Console.WriteLine("----");
                                 captures.Add(found);
                             }
                         }
@@ -331,9 +333,9 @@ public class CheckersBoard
 
             foreach (int move in moves)
             {
-                Console.WriteLine(move);
+              //  Console.WriteLine(move);
             }
-            Console.WriteLine("---------");
+          //  Console.WriteLine("---------");
         }
 
         return captures;
