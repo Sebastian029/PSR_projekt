@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GrpcService.Services;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 namespace GrpcService
 {
@@ -15,7 +16,20 @@ namespace GrpcService
             // Dodane dla gRPC
             builder.Services.AddGrpc();
 
+            builder.WebHost.ConfigureKestrel(options =>
+            {
+                // gRPC dzia³a na HTTP/2
+                options.ListenAnyIP(5168, listenOptions =>
+                {
+                    listenOptions.Protocols = HttpProtocols.Http2;
+                });
 
+                // WebSocket dzia³a na HTTP/1.1
+                options.ListenAnyIP(5162, listenOptions =>
+                {
+                    listenOptions.Protocols = HttpProtocols.Http1;
+                });
+            });
 
             builder.Services.AddCors(options =>
             {

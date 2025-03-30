@@ -4,7 +4,7 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        GrpcChannel channel = GrpcChannel.ForAddress("http://localhost:5162");
+        GrpcChannel channel = GrpcChannel.ForAddress("http://localhost:5168");
         GrpcServer.Greeter.GreeterClient client = new GrpcServer.Greeter.GreeterClient(channel);
 
         var request = new GrpcServer.HelloRequest
