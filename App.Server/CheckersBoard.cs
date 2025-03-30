@@ -225,9 +225,9 @@ public class CheckersBoard
     return moves;
 }
 
-    public List<int> GetValidCaptures(int index)
+    public List<(int, int)> GetValidCaptures(int index)
     {
-        List<int> captures = new List<int>();
+        List<(int, int)> captures = new List<(int, int)>();
         byte piece = GetField(index);
         if (piece == (byte)PieceType.Empty) return captures;
 
@@ -260,7 +260,7 @@ public class CheckersBoard
                                     continue;
 
                                 // Usunięto ograniczenie kierunku dla pionków - mogą bić w obie strony
-                                captures.Add(targetIndex);
+                                captures.Add((targetIndex, middleIndex));
                             }
                         }
                     }
@@ -320,7 +320,7 @@ public class CheckersBoard
                                 Console.WriteLine("FOUND empty : " + found);
                                 Console.WriteLine("BY : " + index);
                                 Console.WriteLine("----");
-                                captures.Add(found);
+                                captures.Add((tmp+offset, tmp));
                             }
                         }
                         
@@ -351,14 +351,13 @@ public class CheckersBoard
 
         var initialCaptures = GetValidCaptures(index);
 
-        foreach (var capture in initialCaptures)
+        foreach (var (capture, pieceIndex) in initialCaptures)
         {
             // Symuluj ruch
             byte originalPiece = GetField(index);
             SetField(index, (byte)PieceType.Empty);
-            int middleIndex = GetMiddleIndex(index, capture);
-            byte capturedPiece = GetField(middleIndex);
-            SetField(middleIndex, (byte)PieceType.Empty);
+            byte capturedPiece = GetField(pieceIndex);
+            SetField(pieceIndex, (byte)PieceType.Empty);
             SetField(capture, originalPiece);
 
             // Sprawdź czy pionek powinien zostać damką
@@ -378,7 +377,7 @@ public class CheckersBoard
             var furtherCaptures = GetValidCaptures(capture);
             if (furtherCaptures.Count > 0)
             {
-                foreach (var furtherCapture in furtherCaptures)
+                foreach (var (furtherCapture, tmp) in furtherCaptures)
                 {
                     List<int> sequence = new List<int>(previousCaptures) { capture, furtherCapture };
                     multipleCaptures.AddRange(sequence);
@@ -395,7 +394,7 @@ public class CheckersBoard
 
             // Cofnij symulację
             SetField(capture, (byte)PieceType.Empty);
-            SetField(middleIndex, capturedPiece);
+            SetField(pieceIndex, capturedPiece);
             SetField(index, originalPiece);
         }
 

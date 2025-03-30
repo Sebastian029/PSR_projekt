@@ -53,17 +53,35 @@
 
     private bool ExecuteCapture(int from, int to)
     {
-        // Wykonaj bicie na planszy
+        // Get the piece and perform basic capture
         byte piece = board.GetField(from);
-        int middleIndex = board.GetMiddleIndex(from, to);
+    
+        // Find captured piece index - we need to update this to work with king captures
+        int middleIndex;
+        List<(int, int)> validCaptures = board.GetValidCaptures(from);
+    
+        // Find the matching capture to get the middleIndex
+        middleIndex = -1;
+        foreach (var capture in validCaptures)
+        {
+            if (capture.Item1 == to)
+            {
+                middleIndex = capture.Item2;
+                break;
+            }
+        }
+    
+        // If no matching capture was found, return false
+        if (middleIndex == -1) return false;
+    
         byte capturedPiece = board.GetField(middleIndex);
 
-        // Usuń pionek z pola źródłowego i zbity pionek
+        // Perform the capture
         board.SetField(from, (byte)PieceType.Empty);
         board.SetField(middleIndex, (byte)PieceType.Empty);
         board.SetField(to, piece);
 
-        // Sprawdź promocję na damkę
+        // Check for promotion to king
         if (piece == (byte)PieceType.WhitePawn && to < 4)
         {
             board.SetField(to, (byte)PieceType.WhiteKing);
@@ -75,7 +93,7 @@
             piece = (byte)PieceType.BlackKing;
         }
 
-        // Sprawdź kolejne bicia
+        // Check for further captures
         var furtherCaptures = board.GetValidCaptures(to);
         if (furtherCaptures.Count > 0)
         {
@@ -84,7 +102,7 @@
             return true;
         }
 
-        // Zakończ turę, jeśli nie ma więcej bić
+        // End turn if no more captures
         mustCaptureFrom = null;
         captureSequence.Clear();
         isWhiteTurn = !isWhiteTurn;
@@ -108,28 +126,7 @@
     public bool IsWhiteTurn => isWhiteTurn;
     public int? MustCaptureFrom => mustCaptureFrom;
 
-    public List<int> GetPossibleMoves(int fieldIndex)
-    {
-        // Sprawdź czy pionek należy do aktualnego gracza
-        byte piece = board.GetField(fieldIndex);
-        if (isWhiteTurn && (piece == (byte)PieceType.BlackPawn || piece == (byte)PieceType.BlackKing))
-            return new List<int>();
-        if (!isWhiteTurn && (piece == (byte)PieceType.WhitePawn || piece == (byte)PieceType.WhiteKing))
-            return new List<int>();
-
-        var allCaptures = GetAllPossibleCaptures();
-        bool hasAnyCaptures = allCaptures.Count > 0;
-
-        if (hasAnyCaptures)
-        {
-            if (allCaptures.ContainsKey(fieldIndex))
-                return allCaptures[fieldIndex];
-            return new List<int>();
-        }
-
-        // Jeśli nie ma bić, zwróć normalne ruchy
-        return board.GetValidMoves(fieldIndex);
-    }
+    
 
     private Dictionary<int, List<int>> GetAllPossibleCaptures()
     {
@@ -141,11 +138,23 @@
                 (!isWhiteTurn && (piece == (byte)PieceType.BlackPawn || piece == (byte)PieceType.BlackKing)))
             {
                 var captures = board.GetValidCaptures(i);
+            
+                // Extract just the target positions from the captures
+                var targetPositions = new List<int>();
+                foreach (var capture in captures)
+                {
+                    targetPositions.Add(capture.Item1);
+                }
+            
+                // Check if we still need to handle multiple captures separately
+                // If GetMultipleCaptures still exists and is needed
                 var multipleCaptures = board.GetMultipleCaptures(i);
-                if (captures.Count > 0 || multipleCaptures.Count > 0)
+            
+                if (targetPositions.Count > 0 || multipleCaptures.Count > 0)
                 {
                     var allCaptures = new List<int>();
-                    allCaptures.AddRange(captures);
+                
+                    allCaptures.AddRange(targetPositions);
                     allCaptures.AddRange(multipleCaptures);
                     result[i] = allCaptures;
                 }
