@@ -5,7 +5,7 @@
     justify-content: center;
     height: 100vh;
     width: 100vw;
-    background-color: #222;
+    background-color: #1a1a1a;
     color: white;
     text-align: center;
 }
@@ -20,6 +20,7 @@
     flex-direction: column;
     gap: 15px;
     width: 300px;
+    min-width:300px;
 }
 
 .settings-option {
@@ -35,6 +36,10 @@
 
     .settings-option:hover {
         background-color: #666;
+    }
+    .settings-option.active {
+        background-color: #4CAF50; /* Zielony dla ON */
+        color: white;
     }
 
 .back-button {
@@ -58,3 +63,32 @@
      gap: 10px;
 
  }
+.buttons2 {
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.required {
+    color: red;
+    margin-left: 4px;
+}
+
+.error-message {
+    color: red;
+    margin: 10px 0;
+    text-align: center;
+}
+
+.unselected {
+    border: 1px solid red;
+}
+
+.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+    .disabled:hover {
+        background-color: initial;
+    }

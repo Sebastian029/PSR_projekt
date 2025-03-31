@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import WebSocketClient from "../components/WebSocketClient";
 
-const wsClient = new WebSocketClient("ws://localhost:5162/ws"); 
+const wsClient = new WebSocketClient("ws://localhost:5162/ws");
 
 const GameBoard = () => {
-    const [board, setBoard] = useState(Array(8).fill(null).map(() => Array(8).fill(".")));
+    const initialBoard = Array(8).fill(null).map(() => Array(8).fill("."));
+    const [board, setBoard] = useState(initialBoard);
+    const location = useLocation();
+    const { depth, granulation, isPerformanceTest } = location.state || {};
     const [selectedPiece, setSelectedPiece] = useState(null);
 
+
     useEffect(() => {
-        wsClient.socket.onmessage = (event) => {
+        const handleMessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
                 console.log("Parsed response:", data);
 
+                // Obs³uga planszy
                 if (data.Board) {
                     let boardArray;
 
@@ -32,20 +38,42 @@ const GameBoard = () => {
 
                     updateBoardFromServer(boardArray);
                 }
+
+                // Obs³uga potwierdzenia ustawieñ
+                if (data.type === "settings_confirmation") {
+                    setSettingsConfirmed(true);
+                    console.log("Server confirmed settings:", data);
+                }
+
             } catch (error) {
                 console.error("Error parsing message:", error);
             }
         };
 
+        wsClient.socket.onmessage = handleMessage;
+        console.log("mucios");
+        console.log(depth);
+        console.log(granulation)
+        // Wysy³amy ustawienia tylko jeœli s¹ dostêpne
+        if (depth && granulation) {
+            console.log("Sending settings to server:", { depth, granulation });
+            wsClient.sendSettings({
+                depth: parseInt(depth),
+                granulation: parseInt(granulation),
+                isPerformanceTest: isPerformanceTest !== undefined ? Boolean(isPerformanceTest) : false
+            });
+        }
+
         return () => {
-           // wsClient.socket.close();
+            wsClient.socket.onmessage = null;
         };
-    }, []);
+    }, [depth, granulation]); // Efekt uruchomi siê ponownie gdy depth/granulation siê zmieni¹
+
 
     const updateBoardFromServer = (boardState) => {
         const newBoard = Array(8).fill(null).map(() => Array(8).fill("."));
-
         const playablePositions = [];
+
         for (let row = 0; row < 8; row++) {
             for (let col = 0; col < 8; col++) {
                 if ((row + col) % 2 === 1) {
@@ -57,29 +85,31 @@ const GameBoard = () => {
         boardState.forEach((square, index) => {
             if (index < playablePositions.length) {
                 const { row, col } = playablePositions[index];
-
                 if (square === "empty") {
                     newBoard[row][col] = ".";
-                } else if (square.includes("black")) {
+                } else if (square === "black") {
                     newBoard[row][col] = "B";
-                } else if (square.includes("white")) {
+                } else if (square === "white") {
                     newBoard[row][col] = "W";
+                } else if (square === "blackKing") {
+                    newBoard[row][col] = "BK";  // Czarna damka
+                } else if (square === "whiteKing") {
+                    newBoard[row][col] = "WK";  // Biaï¿½a damka
                 }
             }
         });
 
         setBoard(newBoard);
     };
+
     const handleCellClick = (rowIndex, colIndex) => {
-        if ((rowIndex + colIndex) % 2 !== 1) {
-            return;
-        }
+        if ((rowIndex + colIndex) % 2 !== 1) return;
 
         if (selectedPiece) {
             const { row, col } = selectedPiece;
             sendMove(col, row, colIndex, rowIndex);
             setSelectedPiece(null);
-        } else if (board[rowIndex][colIndex] === "W" || board[rowIndex][colIndex] === "B") {
+        } else if (board[rowIndex][colIndex] !== ".") {
             setSelectedPiece({ row: rowIndex, col: colIndex });
         }
     };
@@ -87,6 +117,10 @@ const GameBoard = () => {
     const sendMove = (fromX, fromY, toX, toY) => {
         const move = { fromX, fromY, toX, toY };
         wsClient.sendMove(move);
+    };
+
+    const sendReset = () => {
+        wsClient.sendReset();
     };
 
     return (
@@ -105,6 +139,11 @@ const GameBoard = () => {
                             selectedPiece.row === rowIndex &&
                             selectedPiece.col === colIndex;
 
+                        let pieceColor = null;
+                        if (cell === "W") pieceColor = "#fff";
+                        else if (cell === "B") pieceColor = "#000";
+                        else if (cell === "WK" || cell === "BK") pieceColor = "#0f0"; // Zielony dla damki
+
                         return (
                             <div
                                 key={`${rowIndex}-${colIndex}`}
@@ -122,13 +161,13 @@ const GameBoard = () => {
                                 }}
                                 onClick={() => handleCellClick(rowIndex, colIndex)}
                             >
-                                
-                                {cell !== "." && (
+
+                                {pieceColor && (
                                     <div style={{
                                         width: 40,
                                         height: 40,
                                         borderRadius: "50%",
-                                        backgroundColor: cell === "W" ? "#fff" : "#000",
+                                        backgroundColor: pieceColor,
                                         border: "2px solid #333",
                                         boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
                                         textAlign: "center",
@@ -137,7 +176,7 @@ const GameBoard = () => {
                                     
                                 )}
                                 {Math.floor(rowIndex) * 4 + Math.floor( colIndex/ 2)}
-                                
+
                             </div>
                         );
                     })
@@ -150,7 +189,8 @@ const GameBoard = () => {
                     <p>Select a piece to move</p>
                 )}
             </div>
-            <button onClick={()=>sendMove(0,1,0,1)}>INIT</button>
+            <button onClick={() => sendMove(0, 1, 0, 1)}>INIT</button>
+            <button onClick={() => sendReset()}>Reset Board</button>
         </div>
     );
 };
