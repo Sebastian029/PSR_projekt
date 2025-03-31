@@ -82,19 +82,57 @@ async Task HandleWebSocket(WebSocket webSocket, CheckersGame game)
 
                         if (move.from == -1 && move.to == -1)
                         {
+                            // Reset game
                             response = new GameStateResponse
                             {
                                 Success = success,
-                                Board = game.GetBoardStateReset()
+                                Board = game.GetBoardStateReset(),
+                                IsWhiteTurn = true,
+                                GameOver = false
                             };
                         }
                         else
                         {
+                            // Process player move
                             success = game.PlayMove(move.from, move.to);
+                            
+                            
+                            
+                            // Check if game is over after player move
+                            bool gameOver = game.CheckGameOver();
+                            
+                            // If game isn't over and it's now black's turn, make AI move
+                            if (success && !gameOver && !game.IsWhiteTurn)
+                            {
+                                var aiMove = game.GetAIMove();
+                                if (aiMove.fromField == -1) break; // No valid move
+                                    
+                                success = game.PlayMove(aiMove.fromField, aiMove.toField);
+                                    
+                                // If the AI made a capture, check for follow-up captures
+                                while (success && game.MustCaptureFrom.HasValue)
+                                {
+                                    var followUpCaptures = game.GetAllPossibleCaptures();
+                                    if (followUpCaptures.TryGetValue(game.MustCaptureFrom.Value, out var targets) && targets.Count > 0)
+                                    {
+                                        // AI picks the first available follow-up capture
+                                        var nextCapture = targets[0];
+                                        success = game.PlayMove(game.MustCaptureFrom.Value, nextCapture);
+                                    }
+                                    else
+                                    {
+                                        break; // No more captures
+                                    }
+                                }
+                            }
+                            
                             response = new GameStateResponse
                             {
                                 Success = success,
-                                Board = game.GetBoardState()
+                                Board = game.GetBoardState(),
+                                IsWhiteTurn = game.IsWhiteTurn,
+                                GameOver = gameOver,
+                                Winner = gameOver ? (!game.IsWhiteTurn ? "white" : "black") : null
                             };
                         }
 
@@ -133,6 +171,11 @@ public class GameStateResponse
 {
     public bool Success { get; set; }
     public string Board { get; set; }
+    public bool? IsWhiteTurn { get; set; }
+    public bool? GameOver { get; set; }
+    public string Winner { get; set; }
+    public string Error { get; set; }
+    
 }
 public class SettingsRequest
 {

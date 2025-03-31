@@ -130,7 +130,7 @@
 
     
 
-    private Dictionary<int, List<int>> GetAllPossibleCaptures()
+    public Dictionary<int, List<int>> GetAllPossibleCaptures()
     {
         var result = new Dictionary<int, List<int>>();
         for (int i = 0; i < 32; i++)
@@ -169,11 +169,25 @@
         return ai.GetBestMove(board, isWhiteTurn);
     }
 
+    public bool CheckGameOver()
+    {
+        return ai.IsGameOver(board);
+    }
+
+    public bool HasWhiteWon()
+    {
+        return ai.WhiteWon(board);
+    }
+
+
+
     public bool PlayAIMove()
     {
         var (fromField, toField) = GetAIMove();
         return PlayMove(fromField, toField);
     }
+    
+    
 
 }
 

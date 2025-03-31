@@ -283,7 +283,7 @@ public class CheckersAI
         return row * 10 + col;
     }
 
-    private bool IsGameOver(CheckersBoard board)
+    public bool IsGameOver(CheckersBoard board)
     {
         // Check if either side has no pieces or no valid moves
         bool whiteHasMoves = HasValidMoves(board, true);
@@ -292,6 +292,12 @@ public class CheckersAI
         return !whiteHasMoves || !blackHasMoves;
     }
 
+    public bool WhiteWon(CheckersBoard board)
+    {
+        bool whiteHasMoves = HasValidMoves(board, true);
+        return whiteHasMoves;
+    }
+    
     private bool HasValidMoves(CheckersBoard board, bool isWhiteTurn)
     {
         var mandatoryCaptures = GetMandatoryCaptures(board, isWhiteTurn);
