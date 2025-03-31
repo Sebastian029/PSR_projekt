@@ -97,63 +97,124 @@ public class CheckersBoard
             }
         }
     }
-    else // For kings
+     else // For kings
     {
-        // Define the four diagonal directions based on row parity
-        int[] upLeftOffset = isEvenRow ? new int[] { -4 } : new int[] { -5 };
-        int[] upRightOffset = isEvenRow ? new int[] { -3 } : new int[] { -4 };
-        int[] downLeftOffset = isEvenRow ? new int[] { 4 } : new int[] { 3 };
-        int[] downRightOffset = isEvenRow ? new int[] { 5 } : new int[] { 4 };
+        List<int> offsets = new List<int>();
         
-        // Pairs of direction and corresponding offset
-        var directions = new[] 
-        {
-            (Direction: "UpLeft", Offsets: upLeftOffset),
-            (Direction: "UpRight", Offsets: upRightOffset),
-            (Direction: "DownLeft", Offsets: downLeftOffset),
-            (Direction: "DownRight", Offsets: downRightOffset)
-        };
+        offsets.Add(isEvenRow ? -4 : -5); // Up-left
+        offsets.Add(isEvenRow ? -3 : -4); // Up-right
+        offsets.Add(isEvenRow ? 4 : 3);  // Down-left
+        offsets.Add(isEvenRow ? 5 : 4);  // Down-right
 
-        // Process each direction
-        foreach (var direction in directions)
+
+        foreach (int offset in offsets)
         {
-            int offset = direction.Offsets[0];
-            int currentIndex = index;
-            
-            // Continue in this direction until we hit a boundary or a piece
-            while (true)
+            if ((isEvenRow & offset == -4) || (!isEvenRow & offset == -5)) 
             {
-                int nextIndex = currentIndex + offset;
-                
-                // Check bounds
-                if ((offset < 0 && nextIndex < 0) || (offset > 0 && nextIndex >= 32))
-                    break;
-                    
-                // Check if square is occupied
-                if (GetField(nextIndex) != (byte)PieceType.Empty)
-                    break;
-                    
-                // Calculate row parity for the current position
-                bool currentParity = (currentIndex / 4) % 2 == 0;
-                
-                // Calculate the column change to ensure the move is valid
-                int currentCol = currentIndex % 4;
-                int nextCol = nextIndex % 4;
-                
-                // Check if the move is valid based on board topology
-                if (Math.Abs(currentCol - nextCol) <= 1)
+                int tmp = index;
+                while (tmp + offset >= 0)
                 {
-                    // Valid move - add it to the list
-                    moves.Add(nextIndex);
-                    currentIndex = nextIndex;
-                }
-                else
-                {
-                    // Invalid move - diagonal doesn't continue properly
-                    break;
+                    if(GetField(tmp + offset) != (byte)PieceType.Empty)
+                    {
+                        break;
+                    }
+                    bool parity = (tmp / 4) % 2 == 0 ? true : false;
+                    if (parity & Math.Abs(tmp % 4 - (tmp - 4) % 4) <= 1)
+                    {
+                        moves.Add(tmp - 4);
+                        tmp -= 4;
+                    }
+                    else if (!parity & Math.Abs(tmp % 4 - (tmp - 5) % 4) <= 1)
+                    {
+                        moves.Add(tmp - 5);
+                        tmp -= 5;
+                    }
+                    else break;
+
+
                 }
             }
+
+            if ((isEvenRow & offset == -3) || (!isEvenRow & offset == -4)) 
+            {
+                int tmp = index;
+                while (tmp + offset >= 0)
+                {
+                    if(GetField(tmp + offset) != (byte)PieceType.Empty)
+                    {
+                        break;
+                    }
+                    bool parity = (tmp / 4) % 2 == 0 ? true : false;
+                    if (parity & Math.Abs(tmp % 4 - (tmp - 3) % 4) <= 1)
+                    {
+                        moves.Add(tmp - 3);
+                        tmp -= 3;
+                    }
+                    else if (!parity & Math.Abs(tmp % 4 - (tmp - 4) % 4) <= 1)
+                    {
+                        moves.Add(tmp - 4);
+                        tmp -= 4;
+
+                    }
+                    else break;
+
+
+                }
+            }
+
+            if ((isEvenRow & offset == 4) || (!isEvenRow & offset == 3)) 
+            {
+                int tmp = index;
+                while (tmp + offset < 32) 
+                {
+                    if(GetField(tmp + offset) != (byte)PieceType.Empty)
+                    {
+                        break;
+                    }
+                    bool parity = (tmp / 4) % 2 == 0 ? true : false;
+                    if (parity & Math.Abs(tmp % 4 - (tmp + 4) % 4) <= 1)
+                    {
+                        moves.Add(tmp + 4);
+                        tmp += 4;
+                    }
+                    else if (!parity & Math.Abs(tmp % 4 - (tmp + 3) % 4) <= 1)
+                    {
+                        moves.Add(tmp + 3);
+                        tmp += 3;
+                    }
+                    else break;
+                }
+            }
+
+            if ((isEvenRow & offset == 5) || (!isEvenRow & offset == 4)) 
+            {
+                int tmp = index;
+                while (tmp + offset < 32) 
+                {
+                    if(GetField(tmp + offset) != (byte)PieceType.Empty)
+                    {
+                        break;
+                    }
+                    bool parity = (tmp / 4) % 2 == 0 ? true : false;
+                    if (parity & Math.Abs(tmp % 4 - (tmp + 5) % 4) <= 1)
+                    {
+                        moves.Add(tmp + 5);
+                        tmp += 5;
+                    }
+                    else if (!parity & Math.Abs(tmp % 4 - (tmp + 4) % 4) <= 1)
+                    {
+                        moves.Add(tmp + 4);
+                        tmp += 4;
+                    }
+                    else break;
+                }
+
+
+
+
+            }
         }
+
     }
     
     foreach (int move in moves)
