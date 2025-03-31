@@ -1,6 +1,7 @@
 ﻿public class CheckersGame
 {
     private CheckersBoard board;
+    private CheckersAI ai;
     private bool isWhiteTurn;
     private int? mustCaptureFrom = null;
     private List<int> captureSequence = new List<int>();
@@ -13,6 +14,7 @@
     {
         board = new CheckersBoard();
         isWhiteTurn = true;
+        ai = new CheckersAI();
     }
     public void SetDifficulty(int depth, int granulation, bool? isPerformanceTest)
     {
@@ -162,6 +164,17 @@
         }
         return result;
     }
+    public (int fromField, int toField) GetAIMove()
+    {
+        return ai.GetBestMove(board, isWhiteTurn);
+    }
+
+    public bool PlayAIMove()
+    {
+        var (fromField, toField) = GetAIMove();
+        return PlayMove(fromField, toField);
+    }
+
 }
 
 public enum PieceType : byte

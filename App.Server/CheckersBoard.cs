@@ -408,10 +408,10 @@ public class CheckersBoard
                     if (Math.Abs(nextCol - captureCol) <= 1)
                     {
                         found = captureIndex;
-                        Console.WriteLine("EMPTY " + captureIndex);
-                        Console.WriteLine("PIECE " + nextIndex);
-                        Console.WriteLine("BY " + index);
-                        Console.WriteLine("----");
+                        //Console.WriteLine("EMPTY " + captureIndex);
+                        //Console.WriteLine("PIECE " + nextIndex);
+                        //Console.WriteLine("BY " + index);
+                        //Console.WriteLine("----");
                         captures.Add((captureIndex, nextIndex)); // Add capture: (target, captured piece)
                     }
                 }
@@ -528,6 +528,19 @@ public class CheckersBoard
             : (int)Math.Floor((double)(to + from) / 2);
 
         return middleIndex;
+    }
+    
+    public CheckersBoard Clone()
+    {
+        CheckersBoard clonedBoard = new CheckersBoard();
+    
+        clonedBoard.board = new uint[3];
+        for (int i = 0; i < board.Length; i++)
+        {
+            clonedBoard.board[i] = board[i];
+        }
+
+        return clonedBoard;
     }
 
     public string SerializeBoard()

@@ -53,7 +53,7 @@ async Task HandleWebSocket(WebSocket webSocket, CheckersGame game)
             {
                 string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
                 Console.WriteLine($"Received raw message: {message}");
-
+                Console.WriteLine("AI: " + game.GetAIMove());
 
                 try
                 {
@@ -67,7 +67,7 @@ async Task HandleWebSocket(WebSocket webSocket, CheckersGame game)
                         var settings = JsonSerializer.Deserialize<SettingsRequest>(message, options);
                         Console.WriteLine($"Received settings - Depth: {settings.Depth}, Granulation: {settings.Granulation}, performance: {settings.IsPerformanceTest}");
 
-                        // Tutaj ustawiamy wartoœci w grze
+                        // Tutaj ustawiamy wartoï¿½ci w grze
                         game.SetDifficulty(settings.Depth, settings.Granulation, settings.IsPerformanceTest);
 
                     }
