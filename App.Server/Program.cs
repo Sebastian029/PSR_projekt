@@ -1,84 +1,114 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.DependencyInjection;
-using System;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-using App.Server;
 using System.Text.Json.Serialization;
+using GrpcService.Services;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddCors(options =>
+namespace GrpcService
 {
-    options.AddDefaultPolicy(policy =>
+    public class Program
     {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
-    });
-});
-
-var app = builder.Build();
-
-app.UseWebSockets();
-app.UseCors();
-
-CheckersGame game = new CheckersGame(); 
-
-app.Map("/ws", async context =>
-{
-    if (context.WebSockets.IsWebSocketRequest)
-    {
-        using WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
-        await HandleWebSocket(webSocket, game);
-    }
-    else
-    {
-        context.Response.StatusCode = 400;
-    }
-});
-
-async Task HandleWebSocket(WebSocket webSocket, CheckersGame game)
-{
-    var buffer = new byte[1024 * 4];
-
-    try
-    {
-        while (webSocket.State == WebSocketState.Open)
+        public static void Main(string[] args)
         {
-            var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-            if (result.MessageType == WebSocketMessageType.Text)
+            var builder = WebApplication.CreateBuilder(args);
+
+            // Dodane dla gRPC
+            builder.Services.AddGrpc();
+
+            builder.WebHost.ConfigureKestrel(options =>
             {
-                string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                Console.WriteLine($"Received raw message: {message}");
-                Console.WriteLine("AI: " + game.GetAIMove());
-
-                try
+                // gRPC dzia�a na HTTP/2
+                options.ListenAnyIP(5168, listenOptions =>
                 {
-                    if (message.Contains("\"type\":\"settings\""))
+                    listenOptions.Protocols = HttpProtocols.Http2;
+                });
+
+                // WebSocket dzia�a na HTTP/1.1
+                options.ListenAnyIP(5162, listenOptions =>
+                {
+                    listenOptions.Protocols = HttpProtocols.Http1;
+                });
+            });
+
+            builder.Services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(policy =>
+                {
+                    policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+                });
+            });
+
+            var app = builder.Build();
+
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+            }
+
+            app.UseWebSockets();
+            app.UseCors();
+            app.UseRouting();
+
+            CheckersGame game = new CheckersGame();
+
+            // Configure the HTTP request pipeline.
+            app.MapGrpcService<GreeterService>();
+            app.MapGet("/", () => "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
+
+            // Endpoint WebSocket
+            app.Map("/ws", async context =>
+            {
+                if (context.WebSockets.IsWebSocketRequest)
+                {
+                    using WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
+                    await HandleWebSocket(webSocket, game);
+                }
+                else
+                {
+                    context.Response.StatusCode = 400;
+                }
+            });
+
+            app.Run();
+        }
+
+        private static async Task HandleWebSocket(WebSocket webSocket, CheckersGame game)
+        {
+            var buffer = new byte[1024 * 4];
+
+            try
+            {
+                while (webSocket.State == WebSocketState.Open)
+                {
+                    var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                    if (result.MessageType == WebSocketMessageType.Text)
                     {
-                        var options = new JsonSerializerOptions
+                        string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                        Console.WriteLine($"Received raw message: {message}");
+
+                        try
                         {
-                            PropertyNameCaseInsensitive = true
-                        };
+                            if (message.Contains("\"type\":\"settings\""))
+                            {
+                                var options = new JsonSerializerOptions
+                                {
+                                    PropertyNameCaseInsensitive = true
+                                };
 
-                        var settings = JsonSerializer.Deserialize<SettingsRequest>(message, options);
-                        Console.WriteLine($"Received settings - Depth: {settings.Depth}, Granulation: {settings.Granulation}, performance: {settings.IsPerformanceTest}");
+                                var settings = JsonSerializer.Deserialize<SettingsRequest>(message, options);
+                                Console.WriteLine($"Received settings - Depth: {settings.Depth}, Granulation: {settings.Granulation}, performance: {settings.IsPerformanceTest}");
 
-                        // Tutaj ustawiamy warto�ci w grze
-                        game.SetDifficulty(settings.Depth, settings.Granulation, settings.IsPerformanceTest);
-
-                    }
-                    else { 
-                    var move = JsonSerializer.Deserialize<MoveRequest>(message);
-                    Console.WriteLine("BACKEND - FROM " +  move.from + "," + move.to);
-                    if (move != null)
-                    {
-                        bool success = true; 
-
-                        GameStateResponse response;
+                                game.SetDifficulty(settings.Depth, settings.Granulation, settings.IsPerformanceTest);
+                            }
+                            else
+                            {
+                                var move = JsonSerializer.Deserialize<MoveRequest>(message);
+                                Console.WriteLine("BACKEND - FROM " + move.from + "," + move.to);
+                                if (move != null)
+                                {
+                                    bool success = true;
+                                    GameStateResponse response;
 
                         if (move.from == -1 && move.to == -1)
                         {
@@ -136,36 +166,36 @@ async Task HandleWebSocket(WebSocket webSocket, CheckersGame game)
                             };
                         }
 
-                        string responseJson = JsonSerializer.Serialize(response);
-                        byte[] responseBytes = Encoding.UTF8.GetBytes(responseJson);
-                        await webSocket.SendAsync(new ArraySegment<byte>(responseBytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                                    string responseJson = JsonSerializer.Serialize(response);
+                                    byte[] responseBytes = Encoding.UTF8.GetBytes(responseJson);
+                                    await webSocket.SendAsync(new ArraySegment<byte>(responseBytes), WebSocketMessageType.Text, true, CancellationToken.None);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error processing message: {ex.Message}");
+                        }
+                    }
+                    else if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
                     }
                 }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error processing message: {ex.Message}");
-                }
             }
-            else if (result.MessageType == WebSocketMessageType.Close)
+            catch (Exception ex)
             {
-                await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                Console.WriteLine($"WebSocket error: {ex.Message}");
             }
         }
     }
-    catch (Exception ex)
+
+    // Klasy dla WebSocket
+    public class MoveRequest
     {
-        Console.WriteLine($"WebSocket error: {ex.Message}");
+        public int from { get; set; }
+        public int to { get; set; }
     }
-}
-
-app.Run();
-
-public class MoveRequest
-{
-    public int from { get; set; }
-    public int to { get; set; }
-}
 
 public class GameStateResponse
 {
@@ -183,9 +213,10 @@ public class SettingsRequest
     [JsonPropertyName("depth")]
     public int Depth { get; set; }
 
-    [JsonPropertyName("granulation")]
-    public int Granulation { get; set; }
+        [JsonPropertyName("granulation")]
+        public int Granulation { get; set; }
 
-    [JsonPropertyName("isPerformanceTest")] 
-    public bool? IsPerformanceTest { get; set; }
+        [JsonPropertyName("isPerformanceTest")]
+        public bool? IsPerformanceTest { get; set; }
+    }
 }
