@@ -4,18 +4,26 @@ option csharp_namespace = "GrpcServer";
 
 package greet;
 
-// The greeting service definition.
 service Greeter {
-  // Sends a greeting
   rpc SayHello (HelloRequest) returns (HelloReply);
+  rpc SubscribeToBoardUpdates (SubscriptionRequest) returns (stream BoardUpdate);
 }
 
-// The request message containing the user's name.
 message HelloRequest {
   string name = 1;
 }
 
-// The response message containing the greetings.
 message HelloReply {
   string message = 1;
+}
+
+message SubscriptionRequest {
+  string client_id = 1;
+}
+
+message BoardUpdate {
+  string board_state = 1;
+  bool is_white_turn = 2;
+  bool game_over = 3;
+  optional string winner = 4; // Dodane 'optional'
 }

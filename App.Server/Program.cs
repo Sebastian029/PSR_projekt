@@ -2,7 +2,6 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using GrpcService.Services;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 namespace GrpcService
@@ -14,8 +13,6 @@ namespace GrpcService
             var builder = WebApplication.CreateBuilder(args);
 
             // Dodane dla gRPC
-            builder.Services.AddGrpc();
-
             builder.WebHost.ConfigureKestrel(options =>
             {
                 // gRPC dzia�a na HTTP/2
@@ -33,24 +30,30 @@ namespace GrpcService
 
             builder.Services.AddCors(options =>
             {
-                options.AddDefaultPolicy(policy =>
+                options.AddPolicy("AllowAll", builder =>
                 {
-                    policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+                    builder.AllowAnyOrigin()
+                           .AllowAnyMethod()
+                           .AllowAnyHeader()
+                           .WithExposedHeaders("Grpc-Status", "Grpc-Message", "Grpc-Encoding", "Grpc-Accept-Encoding");
                 });
             });
-
+            CheckersGame game = new CheckersGame();
+            builder.Services.AddSingleton(game);
+            builder.Services.AddGrpc();
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
-
+            app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
+            app.UseCors("AllowAll");
             app.UseWebSockets();
             app.UseCors();
             app.UseRouting();
 
-            CheckersGame game = new CheckersGame();
+            
 
             // Configure the HTTP request pipeline.
             app.MapGrpcService<GreeterService>();
@@ -76,117 +79,163 @@ namespace GrpcService
         private static async Task HandleWebSocket(WebSocket webSocket, CheckersGame game)
         {
             var buffer = new byte[1024 * 4];
+            var socketId = Guid.NewGuid().ToString();
+            Console.WriteLine($"WebSocket connected: {socketId}");
 
             try
             {
                 while (webSocket.State == WebSocketState.Open)
                 {
                     var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+
                     if (result.MessageType == WebSocketMessageType.Text)
                     {
                         string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                        Console.WriteLine($"Received raw message: {message}");
+                        Console.WriteLine($"[{socketId}] Received: {message}");
 
                         try
                         {
+                            // Obsługa ustawień gry
                             if (message.Contains("\"type\":\"settings\""))
                             {
                                 var options = new JsonSerializerOptions
                                 {
-                                    PropertyNameCaseInsensitive = true
+                                    PropertyNameCaseInsensitive = true,
+                                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                                 };
 
                                 var settings = JsonSerializer.Deserialize<SettingsRequest>(message, options);
-                                Console.WriteLine($"Received settings - Depth: {settings.Depth}, Granulation: {settings.Granulation}, performance: {settings.IsPerformanceTest}");
+                                if (settings != null)
+                                {
+                                    game.SetDifficulty(
+                                        settings.Depth,
+                                        settings.Granulation,
+                                        settings.IsPerformanceTest ?? false);
 
-                                game.SetDifficulty(settings.Depth, settings.Granulation, settings.IsPerformanceTest);
+                                    await SendGameState(webSocket, game, true);
+                                    await GreeterService.SendBoardUpdate(game);
+                                }
                             }
+                            // Obsługa ruchów
                             else
                             {
                                 var move = JsonSerializer.Deserialize<MoveRequest>(message);
-                                Console.WriteLine("BACKEND - FROM " + move.from + "," + move.to);
                                 if (move != null)
                                 {
-                                    bool success = true;
-                                    GameStateResponse response;
-
-                        if (move.from == -1 && move.to == -1)
-                        {
-                            // Reset game
-                            response = new GameStateResponse
-                            {
-                                Success = success,
-                                Board = game.GetBoardStateReset(),
-                                IsWhiteTurn = true,
-                                GameOver = false
-                            };
-                        }
-                        else
-                        {
-                            // Process player move
-                            success = game.PlayMove(move.from, move.to);
-                            
-                            
-                            
-                            // Check if game is over after player move
-                            bool gameOver = game.CheckGameOver();
-                            
-                            // If game isn't over and it's now black's turn, make AI move
-                            if (success && !gameOver && !game.IsWhiteTurn)
-                            {
-                                var aiMove = game.GetAIMove();
-                                if (aiMove.fromField == -1) break; // No valid move
-                                    
-                                success = game.PlayMove(aiMove.fromField, aiMove.toField);
-                                    
-                                // If the AI made a capture, check for follow-up captures
-                                while (success && game.MustCaptureFrom.HasValue)
-                                {
-                                    var followUpCaptures = game.GetAllPossibleCaptures();
-                                    if (followUpCaptures.TryGetValue(game.MustCaptureFrom.Value, out var targets) && targets.Count > 0)
-                                    {
-                                        // AI picks the first available follow-up capture
-                                        var nextCapture = targets[0];
-                                        success = game.PlayMove(game.MustCaptureFrom.Value, nextCapture);
-                                    }
-                                    else
-                                    {
-                                        break; // No more captures
-                                    }
+                                    await ProcessMove(webSocket, game, move);
+                                    await GreeterService.SendBoardUpdate(game);
                                 }
                             }
-                            
-                            response = new GameStateResponse
-                            {
-                                Success = success,
-                                Board = game.GetBoardState(),
-                                IsWhiteTurn = game.IsWhiteTurn,
-                                GameOver = gameOver,
-                                Winner = gameOver ? (!game.IsWhiteTurn ? "white" : "black") : null
-                            };
                         }
-
-                                    string responseJson = JsonSerializer.Serialize(response);
-                                    byte[] responseBytes = Encoding.UTF8.GetBytes(responseJson);
-                                    await webSocket.SendAsync(new ArraySegment<byte>(responseBytes), WebSocketMessageType.Text, true, CancellationToken.None);
-                                }
-                            }
+                        catch (JsonException jsonEx)
+                        {
+                            Console.WriteLine($"JSON error: {jsonEx.Message}");
+                            await SendError(webSocket, "Invalid message format");
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Error processing message: {ex.Message}");
+                            Console.WriteLine($"Processing error: {ex.Message}");
+                            await SendError(webSocket, "Processing error occurred");
                         }
                     }
                     else if (result.MessageType == WebSocketMessageType.Close)
                     {
-                        await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                        Console.WriteLine($"[{socketId}] Closing connection");
+                        await webSocket.CloseAsync(
+                            WebSocketCloseStatus.NormalClosure,
+                            "Closing",
+                            CancellationToken.None);
                     }
                 }
             }
+            catch (WebSocketException wsEx) when (wsEx.WebSocketErrorCode == WebSocketError.ConnectionClosedPrematurely)
+            {
+                Console.WriteLine($"[{socketId}] Client disconnected abruptly");
+            }
             catch (Exception ex)
             {
-                Console.WriteLine($"WebSocket error: {ex.Message}");
+                Console.WriteLine($"[{socketId}] Error: {ex.Message}");
             }
+            finally
+            {
+                Console.WriteLine($"[{socketId}] Connection closed");
+            }
+        }
+
+        // Pomocnicze metody
+        private static async Task ProcessMove(WebSocket webSocket, CheckersGame game, MoveRequest move)
+        {
+            bool success;
+            if (move.from == -1 && move.to == -1) // Reset gry
+            {
+                game.GetBoardStateReset();
+                success = true;
+            }
+            else // Normalny ruch
+            {
+                success = game.PlayMove(move.from, move.to);
+
+                if (success && !game.IsWhiteTurn && !game.CheckGameOver())
+                {
+                    success = await ProcessAITurn(game);
+                }
+            }
+
+            await SendGameState(webSocket, game, success);
+        }
+
+        private static async Task<bool> ProcessAITurn(CheckersGame game)
+        {
+            var aiMove = game.GetAIMove();
+            if (aiMove.fromField == -1) return false;
+
+            bool success = game.PlayMove(aiMove.fromField, aiMove.toField);
+
+            // Obsługa ciągłych bic
+            while (success && game.MustCaptureFrom.HasValue)
+            {
+                var captures = game.GetAllPossibleCaptures();
+                if (captures.TryGetValue(game.MustCaptureFrom.Value, out var targets) && targets.Count > 0)
+                {
+                    success = game.PlayMove(game.MustCaptureFrom.Value, targets[0]);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return success;
+        }
+
+        private static async Task SendGameState(WebSocket webSocket, CheckersGame game, bool success)
+        {
+            var response = new GameStateResponse
+            {
+                Success = success,
+                Board = game.GetBoardState(),
+                IsWhiteTurn = game.IsWhiteTurn,
+                GameOver = game.CheckGameOver(),
+                Winner = game.CheckGameOver() ? (!game.IsWhiteTurn ? "white" : "black") : null
+            };
+
+            await SendJson(webSocket, response);
+        }
+
+        private static async Task SendJson(WebSocket webSocket, object data)
+        {
+            var json = JsonSerializer.Serialize(data);
+            var bytes = Encoding.UTF8.GetBytes(json);
+            await webSocket.SendAsync(
+                new ArraySegment<byte>(bytes),
+                WebSocketMessageType.Text,
+                true,
+                CancellationToken.None);
+        }
+
+        private static async Task SendError(WebSocket webSocket, string error)
+        {
+            await SendJson(webSocket, new { error });
         }
     }
 
