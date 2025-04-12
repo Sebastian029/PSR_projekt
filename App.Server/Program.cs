@@ -2,6 +2,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GrpcServer;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 namespace GrpcService
@@ -113,7 +114,11 @@ namespace GrpcService
                                         settings.IsPerformanceTest ?? false);
 
                                     await SendGameState(webSocket, game, true);
-                                    await GreeterService.SendBoardUpdate(game);
+                                    await GreeterService.SendToClient("client_1_abc3", new PersonalizedUpdate
+                                    {
+                                        Message = "Tylko Ty to zobaczysz!",
+                                        CustomData = "{\"secret\": 123}"
+                                    });
                                 }
                             }
                             // Obsługa ruchów
@@ -123,7 +128,11 @@ namespace GrpcService
                                 if (move != null)
                                 {
                                     await ProcessMove(webSocket, game, move);
-                                    await GreeterService.SendBoardUpdate(game);
+                                    await GreeterService.SendToClient("client_1_abc3", new PersonalizedUpdate
+                                    {
+                                        Message = "Tylko Ty to zobaczysz!",
+                                        CustomData = "{\"secret\": 123}"
+                                    });
                                 }
                             }
                         }

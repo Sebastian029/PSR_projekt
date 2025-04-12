@@ -1,37 +1,31 @@
 ﻿using Grpc.Core;
 using GrpcServer;
 using System.Collections.Concurrent;
+using System.Text.Json;
 
-public class GreeterService : GrpcServer.Greeter.GreeterBase
+public class GreeterService : Greeter.GreeterBase
 {
     private readonly ILogger<GreeterService> _logger;
-    private readonly CheckersGame _game;
-    private static readonly ConcurrentDictionary<string, IServerStreamWriter<BoardUpdate>> _subscribers = new();
+    private static readonly ConcurrentDictionary<string, (IServerStreamWriter<PersonalizedUpdate>, string)> _clients = new();
+    private static int _clientCounter = 0;
 
-    public GreeterService(ILogger<GreeterService> logger, CheckersGame game)
-    {
-        _logger = logger;
-        _game = game;
-    }
-
-    public override Task<HelloReply> SayHello(HelloRequest request, ServerCallContext context)
-    {
-        return Task.FromResult(new HelloReply { Message = "Hello " + request.Name });
-    }
-
-    public override async Task SubscribeToBoardUpdates(SubscriptionRequest request,
-        IServerStreamWriter<BoardUpdate> responseStream,
+    public override async Task Subscribe(ClientInfo request,
+        IServerStreamWriter<PersonalizedUpdate> responseStream,
         ServerCallContext context)
     {
-        var clientId = request.ClientId ?? Guid.NewGuid().ToString();
-        _subscribers.TryAdd(clientId, responseStream);
+        // Generowanie unikalnego ID i roli
+        var clientId = GenerateClientId();
+        var clientRole = AssignRole(request.DesiredRole);
+
+        // Rejestracja klienta
+        _clients.TryAdd(clientId, (responseStream, clientRole));
 
         try
         {
-            // Wysyłamy początkowy stan planszy
-            await SendBoardUpdate(_game);
+            // Wysyłanie wiadomości powitalnej
+            await SendWelcomeMessage(clientId, clientRole, request.ClientName);
 
-            // Utrzymujemy połączenie otwarte
+            // Utrzymywanie połączenia
             while (!context.CancellationToken.IsCancellationRequested)
             {
                 await Task.Delay(1000, context.CancellationToken);
@@ -39,38 +33,90 @@ public class GreeterService : GrpcServer.Greeter.GreeterBase
         }
         finally
         {
-            _subscribers.TryRemove(clientId, out _);
+            _clients.TryRemove(clientId, out _);
+            await NotifyClientDisconnected(clientId);
         }
     }
 
-    public static async Task SendBoardUpdate(CheckersGame game)
+    private string GenerateClientId()
     {
-        var update = new BoardUpdate
+        return $"client_{Interlocked.Increment(ref _clientCounter)}_{Guid.NewGuid().ToString("N")[..4]}";
+    }
+
+    private string AssignRole(string desiredRole)
+    {
+        // Logika przypisywania ról - można rozbudować
+        return string.IsNullOrEmpty(desiredRole) ?
+            "default_role" :
+            desiredRole.ToLower();
+    }
+
+    private async Task SendWelcomeMessage(string clientId, string role, string clientName)
+    {
+        var welcomeMsg = new PersonalizedUpdate
         {
-            BoardState = game.GetBoardState() ?? "",  // Ensure non-null
-            IsWhiteTurn = game.IsWhiteTurn,
-            GameOver = game.CheckGameOver(),
-            Winner = ""  // Default empty string
+            ClientId = clientId,
+            ClientRole = role,
+            Message = $"Witaj {(string.IsNullOrEmpty(clientName) ? "Anonymous" : clientName)}!",
+            CustomData = JsonSerializer.Serialize(new
+            {
+                AssignedAt = DateTime.UtcNow,
+                YourRole = role,
+                OtherClients = _clients.Count
+            })
         };
 
-        // Only set winner if game is over
-        if (update.GameOver)
-        {
-            update.Winner = !game.IsWhiteTurn ? "white" : "black";
-        }
+        await SendToClient(clientId, welcomeMsg);
+    }
 
-        foreach (var subscriber in _subscribers.ToArray())
+    public static async Task SendToClient(string clientId, PersonalizedUpdate update)
+    {
+        if (_clients.TryGetValue(clientId, out var client))
         {
             try
             {
-                await subscriber.Value.WriteAsync(update);
-                Console.WriteLine($"Sent update to client {subscriber.Key}");
+                await client.Item1.WriteAsync(update);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error sending to client {subscriber.Key}: {ex.Message}");
-                _subscribers.TryRemove(subscriber.Key, out _);
+                Console.WriteLine($"Error sending to {clientId}: {ex.Message}");
+                _clients.TryRemove(clientId, out _);
             }
         }
+    }
+
+    public static async Task SendToRole(string role, Action<PersonalizedUpdate> configureUpdate)
+    {
+        var update = new PersonalizedUpdate();
+        configureUpdate(update);
+
+        foreach (var client in _clients.Where(c => c.Value.Item2 == role))
+        {
+            await SendToClient(client.Key, update);
+        }
+    }
+
+    public static async Task Broadcast(Action<PersonalizedUpdate> configureUpdate)
+    {
+        var update = new PersonalizedUpdate();
+        configureUpdate(update);
+
+        foreach (var client in _clients)
+        {
+            await SendToClient(client.Key, update);
+        }
+    }
+
+    private async Task NotifyClientDisconnected(string clientId)
+    {
+        // Można powiadomić innych klientów o rozłączeniu
+        await Broadcast(update => {
+            update.Message = $"Client {clientId} disconnected";
+            update.CustomData = JsonSerializer.Serialize(new
+            {
+                DisconnectedClient = clientId,
+                Timestamp = DateTime.UtcNow
+            });
+        });
     }
 }

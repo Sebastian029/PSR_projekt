@@ -1,46 +1,33 @@
 ﻿using Grpc.Core;
 using Grpc.Net.Client;
 using GrpcServer;
+using System.Text.Json;
 
-class Program
+var channel = GrpcChannel.ForAddress("http://localhost:5168");
+var client = new Greeter.GreeterClient(channel);
+
+var request = new ClientInfo
 {
-    static async Task Main(string[] args)
+    ClientName = "MojaAplikacja",
+    DesiredRole = "player"
+};
+
+using var call = client.Subscribe(request);
+
+await foreach (var update in call.ResponseStream.ReadAllAsync())
+{
+    Console.WriteLine($"ID: {update.ClientId}");
+    Console.WriteLine($"Rola: {update.ClientRole}");
+    Console.WriteLine($"Wiadomość: {update.Message}");
+
+    if (!string.IsNullOrEmpty(update.CustomData))
     {
-        using var channel = GrpcChannel.ForAddress("http://localhost:5168");
-        var client = new Greeter.GreeterClient(channel);
+        var data = JsonSerializer.Deserialize<dynamic>(update.CustomData);
+        Console.WriteLine($"Dane: {data}");
+    }
 
-        Console.WriteLine("Subskrybuję aktualizacje planszy...");
-        Console.WriteLine("Naciśnij Ctrl+C aby zakończyć...");
-
-        var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (s, e) => cts.Cancel();
-
-        try
-        {
-            var subscription = client.SubscribeToBoardUpdates(
-                new SubscriptionRequest { ClientId = Guid.NewGuid().ToString() },
-                cancellationToken: cts.Token);
-
-            await foreach (var update in subscription.ResponseStream.ReadAllAsync(cancellationToken: cts.Token))
-            {
-                Console.Clear();
-                Console.WriteLine($"Ostatnia aktualizacja: {DateTime.Now:T}");
-                Console.WriteLine($"Plansza:\n{update.BoardState.Replace(",", "\n")}");
-                Console.WriteLine($"Tura białych: {update.IsWhiteTurn}");
-                Console.WriteLine($"Status gry: {(update.GameOver ? "Zakończona" : "W trakcie")}");
-                if (update.GameOver)
-                {
-                    Console.WriteLine($"Zwycięzca: {update.Winner}");
-                }
-            }
-        }
-        catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled)
-        {
-            Console.WriteLine("Subskrypcja anulowana.");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Błąd: {ex.Message}");
-        }
+    if (update.BinaryPayload != null && update.BinaryPayload.Length > 0)
+    {
+        Console.WriteLine($"Otrzymano dane binarne: {update.BinaryPayload.Length} bajtów");
     }
 }

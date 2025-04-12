@@ -4,26 +4,20 @@ option csharp_namespace = "GrpcServer";
 
 package greet;
 
+
 service Greeter {
-  rpc SayHello (HelloRequest) returns (HelloReply);
-  rpc SubscribeToBoardUpdates (SubscriptionRequest) returns (stream BoardUpdate);
+  rpc Subscribe (ClientInfo) returns (stream PersonalizedUpdate);
 }
 
-message HelloRequest {
-  string name = 1;
+message ClientInfo {
+  string client_name = 1;
+  string desiredRole = 2;  // camelCase - lepsza zgodność z C#
 }
 
-message HelloReply {
-  string message = 1;
-}
-
-message SubscriptionRequest {
-  string client_id = 1;
-}
-
-message BoardUpdate {
-  string board_state = 1;
-  bool is_white_turn = 2;
-  bool game_over = 3;
-  optional string winner = 4; // Dodane 'optional'
+message PersonalizedUpdate {
+  string client_id = 1;      // Unikalne ID nadane przez serwer
+  string client_role = 2;    // Rola przypisana przez serwer
+  string message = 3;
+  string custom_data = 4;    // Dane specyficzne dla klienta
+  bytes binary_payload = 5;  // Dane binarne (opcjonalne)
 }
