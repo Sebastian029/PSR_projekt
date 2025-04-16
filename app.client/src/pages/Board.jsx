@@ -8,7 +8,7 @@ const GameBoard = () => {
     const initialBoard = Array(8).fill(null).map(() => Array(8).fill("."));
     const [board, setBoard] = useState(initialBoard);
     const location = useLocation();
-    const { depth, granulation, isPerformanceTest } = location.state || {};
+    const { depth, granulation, isPerformanceTest, isPlayerMode } = location.state || {};
     const [selectedPiece, setSelectedPiece] = useState(null);
 
 
@@ -56,11 +56,12 @@ const GameBoard = () => {
         console.log(granulation)
         // Wysy�amy ustawienia tylko je�li s� dost�pne
         if (depth && granulation) {
-            console.log("Sending settings to server:", { depth, granulation });
+            console.log("Sending settings to server:", { depth, granulation, isPlayerMode });
             wsClient.sendSettings({
                 depth: parseInt(depth),
                 granulation: parseInt(granulation),
-                isPerformanceTest: isPerformanceTest !== undefined ? Boolean(isPerformanceTest) : false
+                isPerformanceTest: isPerformanceTest !== undefined ? Boolean(isPerformanceTest) : false,
+                isPlayerMode: isPlayerMode !== undefined ? Boolean(isPlayerMode) : false
             });
         }
 

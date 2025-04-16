@@ -32,7 +32,7 @@ class WebSocketClient {
 
         let from = getFieldNumber(move.fromX, move.fromY);
         let to = getFieldNumber(move.toX, move.toY);
-        let formattedMove = { from, to };
+        let formattedMove = { from, to, type: "move" };
         
         
         console.log("MOVE:", formattedMove);
@@ -49,7 +49,7 @@ class WebSocketClient {
     sendReset() {
         let from = -1;
         let to = -1;
-        let formattedMove = { from, to };
+        let formattedMove = { from, to, type: "reset" };
         this.socket.send(JSON.stringify(formattedMove))
     }
     sendSettings(settings) {
