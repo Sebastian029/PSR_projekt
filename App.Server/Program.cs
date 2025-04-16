@@ -114,11 +114,7 @@ namespace GrpcService
                                         settings.IsPerformanceTest ?? false);
 
                                     await SendGameState(webSocket, game, true);
-                                    // await GreeterService.SendToClient("client_1_abc3", new PersonalizedUpdate
-                                    // {
-                                    //     Message = "Tylko Ty to zobaczysz!",
-                                    //     CustomData = "{\"secret\": 123}"
-                                    // });
+    
                                 }
                             }
                             // Obsługa ruchów
@@ -128,11 +124,7 @@ namespace GrpcService
                                 if (move != null)
                                 {
                                     await ProcessMove(webSocket, game, move);
-                                    // await GreeterService.SendToClient("client_1_abc3", new PersonalizedUpdate
-                                    // {
-                                    //     Message = "Tylko Ty to zobaczysz!",
-                                    //     CustomData = "{\"secret\": 123}"
-                                    // });
+
                                 }
                             }
                         }
@@ -265,16 +257,22 @@ public class GameStateResponse
     public string Error { get; set; }
     
 }
-public class SettingsRequest
-{
+    public class SettingsRequest
+    {
+        public string type { get; set; } // Add type discriminator
 
-    [JsonPropertyName("depth")]
-    public int Depth { get; set; }
+        [JsonPropertyName("depth")]
+        public int Depth { get; set; }
 
         [JsonPropertyName("granulation")]
         public int Granulation { get; set; }
 
         [JsonPropertyName("isPerformanceTest")]
         public bool? IsPerformanceTest { get; set; }
+
+        // Add GameMode setting
+        [JsonPropertyName("isPlayerMode")]
+        public bool? IsPlayerMode{ get; set; }
     }
 }
+

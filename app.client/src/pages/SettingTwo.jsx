@@ -23,7 +23,8 @@ const SettingTwo = () => {
             state: {
                 depth: selected,
                 granulation: selected2,
-                isPerformanceTest: performanceTest
+                isPerformanceTest: performanceTest,
+                isPlayerMode: false
             }
         });
     };

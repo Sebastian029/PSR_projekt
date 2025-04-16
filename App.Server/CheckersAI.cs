@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using App.Server;
+using GrpcService;
 
 public class CheckersAI
 {

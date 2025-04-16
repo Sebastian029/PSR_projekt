@@ -58,7 +58,8 @@ class WebSocketClient {
                 type: "settings",
                 depth: settings.depth,
                 granulation: settings.granulation,
-                isPerformanceTest: settings.isPerformanceTest !== null ? Boolean(settings.isPerformanceTest) : false
+                isPerformanceTest: settings.isPerformanceTest !== null ? Boolean(settings.isPerformanceTest) : false,
+                isPlayerMode: settings.isPlayerMode !== null ? Boolean(settings.isPlayerMode) : false
             }));
             console.log("Settings sent:", settings);
         } else {

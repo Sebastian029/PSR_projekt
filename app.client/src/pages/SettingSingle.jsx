@@ -16,7 +16,8 @@ const SettingSingle = () => {
         navigate("/game", {
             state: {
                 depth: selected,
-                granulation: selected2
+                granulation: selected2,
+                isPlayerMode: true
             }
         });
     };
