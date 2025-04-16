@@ -57,7 +57,7 @@ namespace GrpcService
             
 
             // Configure the HTTP request pipeline.
-            app.MapGrpcService<GreeterService>();
+            //app.MapGrpcService<GreeterService>();
             app.MapGet("/", () => "Communication with gRPC endpoints must be made through a gRPC client. To learn how to create a client, visit: https://go.microsoft.com/fwlink/?linkid=2086909");
 
             // Endpoint WebSocket
@@ -114,11 +114,11 @@ namespace GrpcService
                                         settings.IsPerformanceTest ?? false);
 
                                     await SendGameState(webSocket, game, true);
-                                    await GreeterService.SendToClient("client_1_abc3", new PersonalizedUpdate
-                                    {
-                                        Message = "Tylko Ty to zobaczysz!",
-                                        CustomData = "{\"secret\": 123}"
-                                    });
+                                    // await GreeterService.SendToClient("client_1_abc3", new PersonalizedUpdate
+                                    // {
+                                    //     Message = "Tylko Ty to zobaczysz!",
+                                    //     CustomData = "{\"secret\": 123}"
+                                    // });
                                 }
                             }
                             // Obsługa ruchów
@@ -128,11 +128,11 @@ namespace GrpcService
                                 if (move != null)
                                 {
                                     await ProcessMove(webSocket, game, move);
-                                    await GreeterService.SendToClient("client_1_abc3", new PersonalizedUpdate
-                                    {
-                                        Message = "Tylko Ty to zobaczysz!",
-                                        CustomData = "{\"secret\": 123}"
-                                    });
+                                    // await GreeterService.SendToClient("client_1_abc3", new PersonalizedUpdate
+                                    // {
+                                    //     Message = "Tylko Ty to zobaczysz!",
+                                    //     CustomData = "{\"secret\": 123}"
+                                    // });
                                 }
                             }
                         }

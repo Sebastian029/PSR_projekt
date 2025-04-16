@@ -9,6 +9,14 @@ service Greeter {
   rpc Subscribe (ClientInfo) returns (stream PersonalizedUpdate);
 }
 
+service CheckersService {
+  // Send the board state and get the best move
+  rpc GetBestMove (BoardStateRequest) returns (MoveResponse);
+
+  // Stream board updates to clients (optional)
+  rpc StreamBoardState (ClientInfo) returns (stream BoardStateUpdate);
+}
+
 message ClientInfo {
   string client_name = 1;
   string desiredRole = 2;  // camelCase - lepsza zgodność z C#
@@ -20,4 +28,25 @@ message PersonalizedUpdate {
   string message = 3;
   string custom_data = 4;    // Dane specyficzne dla klienta
   bytes binary_payload = 5;  // Dane binarne (opcjonalne)
+}
+
+message BoardStateRequest {
+  repeated uint32 boardState = 1;  // The serialized board state
+  bool isWhiteTurn = 2;   // Whose turn it is
+  int32 depth = 3;        // Optional AI search depth
+  int32 granulation = 4;  // Optional AI granulation parameter
+}
+
+message MoveResponse {
+  int32 fromField = 1;    // Source position
+  int32 toField = 2;      // Target position
+  bool success = 3;       // Whether a valid move was found
+  string message = 4;     // Optional message (for errors, etc.)
+}
+
+message BoardStateUpdate {
+  repeated uint32 boardState = 1;
+  bool isWhiteTurn = 2;
+  bool gameOver = 3;
+  string winner = 4;
 }

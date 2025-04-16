@@ -18,7 +18,7 @@ const GameBoard = () => {
                 const data = JSON.parse(event.data);
                 console.log("Parsed response:", data);
 
-                // Obs³uga planszy
+                // Obsï¿½uga planszy
                 if (data.Board) {
                     let boardArray;
 
@@ -39,7 +39,7 @@ const GameBoard = () => {
                     updateBoardFromServer(boardArray);
                 }
 
-                // Obs³uga potwierdzenia ustawieñ
+                // Obsï¿½uga potwierdzenia ustawieï¿½
                 if (data.type === "settings_confirmation") {
                     setSettingsConfirmed(true);
                     console.log("Server confirmed settings:", data);
@@ -54,7 +54,7 @@ const GameBoard = () => {
         console.log("mucios");
         console.log(depth);
         console.log(granulation)
-        // Wysy³amy ustawienia tylko jeœli s¹ dostêpne
+        // Wysyï¿½amy ustawienia tylko jeï¿½li sï¿½ dostï¿½pne
         if (depth && granulation) {
             console.log("Sending settings to server:", { depth, granulation });
             wsClient.sendSettings({
@@ -67,7 +67,7 @@ const GameBoard = () => {
         return () => {
             wsClient.socket.onmessage = null;
         };
-    }, [depth, granulation]); // Efekt uruchomi siê ponownie gdy depth/granulation siê zmieni¹
+    }, [depth, granulation]); // Efekt uruchomi siï¿½ ponownie gdy depth/granulation siï¿½ zmieniï¿½
 
 
     const updateBoardFromServer = (boardState) => {

@@ -1,4 +1,7 @@
-﻿public class CheckersGame
+﻿using Grpc.Net.Client;
+using GrpcServer;
+
+public class CheckersGame
 {
     private CheckersBoard board;
     private CheckersAI ai;
@@ -8,6 +11,8 @@
     private int _depth;
     private int _granulation;
     private bool? _isPerformanceTest;
+    private CheckersService.CheckersServiceClient _client;
+    
 
     
     public CheckersGame()
@@ -15,6 +20,8 @@
         board = new CheckersBoard();
         isWhiteTurn = true;
         ai = new CheckersAI();
+        var channel = GrpcChannel.ForAddress("http://localhost:5000");
+        _client = new CheckersService.CheckersServiceClient(channel);
     }
     public void SetDifficulty(int depth, int granulation, bool? isPerformanceTest)
     {
@@ -166,7 +173,31 @@
     }
     public (int fromField, int toField) GetAIMove()
     {
-        return ai.GetBestMove(board, isWhiteTurn);
+        try
+        {
+            Console.WriteLine("1");
+            var request = new BoardStateRequest
+            {
+                BoardState = { board.board },
+                IsWhiteTurn = isWhiteTurn,
+            };
+            Console.WriteLine("2");
+            var response = _client.GetBestMove(request);
+            Console.WriteLine("3");
+            if (response.Success)
+            {
+                return (response.FromField, response.ToField);
+            }
+            else
+            {
+                return ai.GetBestMove(board, isWhiteTurn);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"gRPC call failed: {ex.Message}");
+            return (-1, -1);
+        }
     }
 
     public bool CheckGameOver()

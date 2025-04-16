@@ -4,7 +4,7 @@ using System.Text.Json;
 
 public class CheckersBoard
 {
-    private uint[] board;
+    public uint[] board;
 
     public CheckersBoard()
     {
@@ -576,6 +576,8 @@ public class CheckersBoard
 
         return clonedBoard;
     }
+    
+    
 
     public string SerializeBoard()
     {
