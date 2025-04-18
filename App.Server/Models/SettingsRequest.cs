@@ -1,6 +1,5 @@
-﻿using System.Text.Json.Serialization;
-
-namespace GrpcService;
+﻿namespace App.Server;
+using System.Text.Json.Serialization;
 
 public class SettingsRequest
 {

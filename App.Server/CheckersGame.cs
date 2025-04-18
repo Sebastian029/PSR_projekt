@@ -1,5 +1,6 @@
 ﻿using Grpc.Net.Client;
 using GrpcServer;
+namespace App.Server;
 
 public class CheckersGame
 {
@@ -208,9 +209,6 @@ public class CheckersGame
     {
         return aIntelligence.WhiteWon(board);
     }
-
-
-
     public bool PlayAIMove()
     {
         var (fromField, toField) = GetAIMove();
@@ -219,13 +217,4 @@ public class CheckersGame
     
     
 
-}
-
-public enum PieceType : byte
-{
-    Empty = 0,
-    WhitePawn = 1,
-    WhiteKing = 2,
-    BlackPawn = 3,
-    BlackKing = 4
 }

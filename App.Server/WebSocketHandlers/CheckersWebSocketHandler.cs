@@ -2,8 +2,7 @@
 using System.Text;
 using System.Text.Json;
 
-
-namespace GrpcService.WebSocketHandlers
+namespace App.Server.WebSocketHandlers
 {
     public class CheckersWebSocketHandler
     {

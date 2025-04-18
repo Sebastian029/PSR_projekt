@@ -1,8 +1,8 @@
 using System.Net.WebSockets;
+using App.Server.WebSocketHandlers;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using GrpcService.WebSocketHandlers;
 
-namespace GrpcService
+namespace App.Server
 {
     public class Program
     {
