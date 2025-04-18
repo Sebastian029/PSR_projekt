@@ -1,4 +1,5 @@
-﻿using Grpc.Core;
+﻿using App.Server;
+using Grpc.Core;
 using GrpcServer;
 using GrpcService;
 
