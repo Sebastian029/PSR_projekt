@@ -33,7 +33,7 @@ public class CheckersAI
             var simulatedBoard = board.Clone();
             simulatedBoard.MovePiece(move.fromField, move.toField);
 
-            int moveScore = Minimax(simulatedBoard, max_depth - 1, !isWhiteTurn, int.MinValue, int.MaxValue);
+            int moveScore = Minimax(simulatedBoard, max_depth - 1, !isWhiteTurn);
 
             if ((isWhiteTurn && moveScore > bestScore) || (!isWhiteTurn && moveScore < bestScore))
             {
@@ -57,7 +57,7 @@ public class CheckersAI
                 var simulatedBoard = board.Clone();
                 SimulateCapture(simulatedBoard, fromField, toField);
 
-                int moveScore = Minimax(simulatedBoard, max_depth - 1, !isWhiteTurn, int.MinValue, int.MaxValue);
+                int moveScore = Minimax(simulatedBoard, max_depth - 1, !isWhiteTurn);
 
                 if ((isWhiteTurn && moveScore > bestScore) || (!isWhiteTurn && moveScore < bestScore))
                 {
@@ -91,8 +91,9 @@ public class CheckersAI
         }
     }
 
-    private int Minimax(CheckersBoard board, int depth, bool isMaximizingPlayer, int alpha, int beta)
+    private int Minimax(CheckersBoard board, int depth, bool isMaximizingPlayer)
     {
+        Console.WriteLine("DEPTH:" + depth);
         if (depth == 0 || IsGameOver(board))
         {
             return EvaluateBoard(board, isMaximizingPlayer);
@@ -119,11 +120,8 @@ public class CheckersAI
                 else
                     simulatedBoard.MovePiece(move.fromField, move.toField);
 
-                int eval = Minimax(simulatedBoard, depth - 1, false, alpha, beta);
+                int eval = Minimax(simulatedBoard, depth - 1, false);
                 maxEval = Math.Max(maxEval, eval);
-                alpha = Math.Max(alpha, eval);
-
-                if (beta <= alpha) break;
             }
             return maxEval;
         }
@@ -138,11 +136,8 @@ public class CheckersAI
                 else
                     simulatedBoard.MovePiece(move.fromField, move.toField);
 
-                int eval = Minimax(simulatedBoard, depth - 1, true, alpha, beta);
+                int eval = Minimax(simulatedBoard, depth - 1, true);
                 minEval = Math.Min(minEval, eval);
-                beta = Math.Min(beta, eval);
-
-                if (beta <= alpha) break;
             }
             return minEval;
         }

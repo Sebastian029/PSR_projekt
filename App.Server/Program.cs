@@ -27,9 +27,7 @@ namespace App.Server
                 });
             });
 
-            // Register CheckersGame as a singleton
             builder.Services.AddSingleton<CheckersGame>();
-            // Register CheckersWebSocketHandler, it will receive CheckersGame via DI
             builder.Services.AddSingleton<CheckersWebSocketHandler>();
             builder.Services.AddGrpc();
 
@@ -46,7 +44,6 @@ namespace App.Server
                 if (context.WebSockets.IsWebSocketRequest)
                 {
                     using WebSocket webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                    // Resolve the WebSocket handler from the service provider
                     var handler = context.RequestServices.GetRequiredService<CheckersWebSocketHandler>();
                     var socketId = Guid.NewGuid().ToString();
                     Console.WriteLine($"WebSocket connected: {socketId}");
