@@ -6,7 +6,7 @@ namespace App.Server;
 public partial class CheckersGame
 {
     private CheckersBoard board;
-    private CheckersAI aIntelligence;
+    private CheckersAI checkersAi;
     private bool isWhiteTurn;
     private int? mustCaptureFrom = null;
     private List<int> captureSequence = new();
@@ -24,7 +24,7 @@ public partial class CheckersGame
     {
         board = new CheckersBoard();
         isWhiteTurn = true;
-        aIntelligence = new CheckersAI();
+        checkersAi = new CheckersAI();
         var channel = GrpcChannel.ForAddress("http://localhost:5000");
         _client = new CheckersService.CheckersServiceClient(channel);
     }

@@ -22,7 +22,7 @@ public partial class CheckersGame
             }
             else
             {
-                return aIntelligence.GetBestMove(board, isWhiteTurn);
+                return checkersAi.GetBestMove(board, isWhiteTurn);
             }
         }
         catch (Exception ex)

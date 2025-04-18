@@ -4,11 +4,11 @@ public partial class CheckersGame
 {
     public bool CheckGameOver()
     {
-        return aIntelligence.IsGameOver(board);
+        return checkersAi.IsGameOver(board);
     }
 
     public bool HasWhiteWon()
     {
-        return aIntelligence.WhiteWon(board);
+        return checkersAi.WhiteWon(board);
     }
 }
