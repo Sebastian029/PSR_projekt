@@ -1,4 +1,4 @@
-﻿namespace GrpcService;
+﻿namespace App.Server;
 
 public class ResetRequest
 {
