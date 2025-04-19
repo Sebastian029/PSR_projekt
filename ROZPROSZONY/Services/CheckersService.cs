@@ -1,50 +1,45 @@
 ﻿using App.Server;
 using Grpc.Core;
 using GrpcServer;
-using GrpcService;
 
-
-public class CheckersServiceImpl : CheckersService.CheckersServiceBase
+namespace GrpcService
 {
-    // private readonly CheckersGame _checkersGame;
-    //
-    // public CheckersServiceImpl(CheckersGame checkersGame)
-    // {
-    //     _checkersGame = checkersGame;
-    // }
-
-    public override Task<MoveResponse> GetBestMove(BoardStateRequest request, ServerCallContext context)
+    public class CheckersServiceImpl : CheckersService.CheckersServiceBase
     {
-        try
+        public override Task<MoveResponse> GetBestMove(BoardStateRequest request, ServerCallContext context)
         {
-            var tmpBoard = new CheckersBoard();
-
-            tmpBoard.board = request.BoardState.ToArray();
-            
-            var ai = new CheckersAI();
-            
-            var (fromField, toField) = ai.GetBestMove(tmpBoard, request.IsWhiteTurn);
-
-            Console.WriteLine("Obliczam ruch!");
-            Console.WriteLine($"Z {fromField} na {toField}");
-            return Task.FromResult(new MoveResponse
+            try
             {
-                FromField = fromField,
-                ToField = toField,
-                Success = true,
-                Message = "Move calculated"
-            });
-        }
-        catch(Exception ex)
-        {
-            return Task.FromResult(new MoveResponse
+                var tmpBoard = new CheckersBoard();
+                tmpBoard.board = request.BoardState.ToArray();
+
+                // Use the requested depth if provided, otherwise default to 5
+                int depth = request.Depth > 0 ? request.Depth : 5;
+                int granulation = request.Granulation > 0 ? request.Granulation : 1;
+
+                var ai = new CheckersAI(depth, granulation);
+
+                var (fromField, toField) = ai.GetBestMove(tmpBoard, request.IsWhiteTurn);
+                Console.WriteLine("Client - " + fromField + " to " + toField);
+                
+                return Task.FromResult(new MoveResponse
+                {
+                    FromField = fromField,
+                    ToField = toField,
+                    Success = true,
+                    Message = "Move calculated"
+                });
+            }
+            catch (Exception ex)
             {
-                FromField = -1,
-                ToField = -1,
-                Success = false,
-                Message = $"Error while calculating move: {ex.Message}"
-            });
+                return Task.FromResult(new MoveResponse
+                {
+                    FromField = -1,
+                    ToField = -1,
+                    Success = false,
+                    Message = $"Error while calculating move: {ex.Message}"
+                });
+            }
         }
     }
-    
 }

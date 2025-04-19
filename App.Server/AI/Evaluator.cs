@@ -3,7 +3,7 @@
 
 public class Evaluator : IBoardEvaluator
 {
-    private readonly int _granulation;
+    public readonly int _granulation;
 
     public Evaluator(int granulation)
     {

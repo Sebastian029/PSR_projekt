@@ -24,9 +24,9 @@ public partial class CheckersGame
     {
         board = new CheckersBoard();
         isWhiteTurn = true;
-        checkersAi = new CheckersAI();
         var channel = GrpcChannel.ForAddress("http://localhost:5000");
         _client = new CheckersService.CheckersServiceClient(channel);
+        checkersAi = new CheckersAI(_depth= 5, granulation: 1, isPerformanceTest: false, grpcChannel: channel);
     }
 
     public void SetDifficulty(int depth, int granulation, bool isPerformanceTest, bool isPlayerMode)

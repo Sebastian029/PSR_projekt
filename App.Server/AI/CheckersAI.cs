@@ -1,5 +1,5 @@
 ﻿using App.Server;
-
+using Grpc.Core;
 
 public class CheckersAI
 {
@@ -7,14 +7,15 @@ public class CheckersAI
     private readonly MoveGenerator _moveGenerator;
     private readonly CaptureSimulator _captureSimulator;
 
-    public CheckersAI(int depth = 5, int granulation = 1, bool isPerformanceTest = false)
+    public CheckersAI(int depth = 5, int granulation = 1, bool? isPerformanceTest = false, ChannelBase grpcChannel = null)
     {
         var evaluator = new Evaluator(granulation);
-        _minimax = new Minimax(depth, evaluator);
+        _minimax = new Minimax(depth, evaluator, grpcChannel);
         _moveGenerator = new MoveGenerator();
         _captureSimulator = new CaptureSimulator();
     }
 
+    // Rest of the class remains the same
     public (int fromField, int toField) GetBestMove(CheckersBoard board, bool isWhiteTurn)
     {
         var captures = _moveGenerator.GetMandatoryCaptures(board, isWhiteTurn);
