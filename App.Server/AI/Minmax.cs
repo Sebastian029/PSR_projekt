@@ -26,7 +26,8 @@ public class Minimax
             var simulated = board.Clone();
             simulated.MovePiece(move.from, move.to);
             int score;
-            
+            Console.WriteLine("Max Depth:" + _maxDepth);
+
             if (_maxDepth > 1 && _grpcClient != null)
             {
                 // Distribute the calculation for subtrees
@@ -55,6 +56,8 @@ public class Minimax
 
     private int MinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
     {
+        Console.WriteLine("Depth:" + depth);
+
         if (depth == 0 || new MoveGenerator().IsGameOver(board))
             return _evaluator.EvaluateBoard(board, isMaximizing);
 
