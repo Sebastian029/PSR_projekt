@@ -156,7 +156,8 @@ namespace App.Server.WebSocketHandlers
                     {
                         success = _game.PlayMove(_game.MustCaptureFrom.Value, targets[0]);
                         await SendGameState(webSocket, true);
-                        await Task.Delay(300);
+                        if(!_game.IsPerformanceTest)
+                            await Task.Delay(300);
                     }
                     else
                     {
@@ -169,13 +170,29 @@ namespace App.Server.WebSocketHandlers
 
         private async Task StartComputerVsComputerGame(WebSocket webSocket)
         {
+            var timer = new GameTimer();
+            timer.Start();
+
             while (!_game.CheckGameOver())
             {
                 await ProcessComputerTurn(webSocket);
-                await Task.Delay(500);
-            }
+                if(!_game.IsPerformanceTest)
+                    await Task.Delay(300);            }
+
+            timer.Stop();
+
             await SendGameState(webSocket);
+
+            if (_game.IsPerformanceTest)
+            {
+                GameLogger.LogGame(
+                    _game.Depth,
+                    _game.Granulation,
+                    timer.ElapsedSeconds
+                );
+            }
         }
+
 
         private async Task HandleReset(WebSocket webSocket)
         {

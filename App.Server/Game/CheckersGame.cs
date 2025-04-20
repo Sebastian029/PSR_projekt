@@ -38,4 +38,19 @@ public partial class CheckersGame
         Console.WriteLine($"Game settings: Depth={depth}, Granulation={granulation}, PerfTest={isPerformanceTest}, PlayerMode={isPlayerMode}");
         checkersAi.updateSettings(depth, granulation, isPerformanceTest);
     }
+    public int Depth
+    {
+        get { return _depth; }
+    }
+
+    public int Granulation
+    {
+        get { return _granulation; }
+    }
+
+    public bool IsPerformanceTest
+    {
+        get { return _isPerformanceTest; }
+    }
+    
 }
