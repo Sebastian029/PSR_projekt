@@ -3,14 +3,17 @@ using Grpc.Core;
 
 public class CheckersAI
 {
-    private readonly Minimax _minimax;
+    private  Minimax _minimax;
     private readonly MoveGenerator _moveGenerator;
     private readonly CaptureSimulator _captureSimulator;
+    private readonly ChannelBase _channel;
+    private readonly Evaluator evaluator;
 
     public CheckersAI(int depth = 5, int granulation = 1, bool? isPerformanceTest = false, ChannelBase grpcChannel = null)
     {
-        var evaluator = new Evaluator(granulation);
-        _minimax = new Minimax(depth, evaluator, grpcChannel);
+        evaluator = new Evaluator();
+        _channel = grpcChannel;
+        _minimax = new Minimax(depth, granulation, evaluator, grpcChannel);
         _moveGenerator = new MoveGenerator();
         _captureSimulator = new CaptureSimulator();
     }
@@ -33,4 +36,10 @@ public class CheckersAI
 
     public bool WhiteWon(CheckersBoard board) =>
         _moveGenerator.HasValidMoves(board, true) && !_moveGenerator.HasValidMoves(board, false);
+
+    public void updateSettings(int depth, int granulation, bool performanceTest)
+    {
+        _minimax = new Minimax(depth, granulation, evaluator, _channel);
+
+    }
 }

@@ -3,13 +3,6 @@
 
 public class Evaluator : IBoardEvaluator
 {
-    public readonly int _granulation;
-
-    public Evaluator(int granulation)
-    {
-        _granulation = granulation;
-    }
-
     public int EvaluateBoard(CheckersBoard board, bool forWhite)
     {
         int score = 0, white = 0, black = 0;
@@ -29,12 +22,12 @@ public class Evaluator : IBoardEvaluator
             if (isWhite)
             {
                 white += val;
-                score += val * _granulation + advancement * _granulation / 4 - centerDist * _granulation / 6;
+                score += val * 1 + advancement * 1 / 4 - centerDist * 1 / 6;
             }
             else
             {
                 black += val;
-                score -= val * _granulation + advancement * _granulation / 4 - centerDist * _granulation / 6;
+                score -= val * 1 + advancement * 1 / 4 - centerDist * 1 / 6;
             }
         }
 

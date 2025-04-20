@@ -36,5 +36,6 @@ public partial class CheckersGame
         _isPerformanceTest = isPerformanceTest;
         _isPlayerMode = isPlayerMode;
         Console.WriteLine($"Game settings: Depth={depth}, Granulation={granulation}, PerfTest={isPerformanceTest}, PlayerMode={isPlayerMode}");
+        checkersAi.updateSettings(depth, granulation, isPerformanceTest);
     }
 }

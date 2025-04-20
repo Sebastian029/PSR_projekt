@@ -6,12 +6,14 @@ using System.Threading.Tasks;
 public class Minimax
 {
     private readonly int _maxDepth;
+    private readonly int _granulation;
     private readonly IBoardEvaluator _evaluator;
     private readonly CheckersService.CheckersServiceClient _grpcClient;
 
-    public Minimax(int depth, IBoardEvaluator evaluator, ChannelBase grpcChannel = null)
+    public Minimax(int depth, int granulation, IBoardEvaluator evaluator, ChannelBase grpcChannel = null)
     {
         _maxDepth = depth;
+        _granulation = _granulation;
         _evaluator = evaluator;
         _grpcClient = grpcChannel != null ? new CheckersService.CheckersServiceClient(grpcChannel) : null;
     }
@@ -92,7 +94,7 @@ public class Minimax
             BoardState = { board.board },
             IsWhiteTurn = isMaximizing,
             Depth = depth,
-            Granulation = (_evaluator as Evaluator)?._granulation ?? 1
+            Granulation = _granulation
         };
 
         try
