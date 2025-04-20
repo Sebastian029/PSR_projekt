@@ -5,7 +5,7 @@ public class Evaluator : IBoardEvaluator
 {
     public int EvaluateBoard(CheckersBoard board, bool forWhite)
     {
-        int score = 0, white = 0, black = 0;
+        int score = 0;
 
         for (int i = 0; i < 32; i++)
         {
@@ -14,26 +14,37 @@ public class Evaluator : IBoardEvaluator
 
             bool isWhite = PieceUtils.IsWhite(piece);
             bool isKing = PieceUtils.IsKing(piece);
-            int val = isKing ? 3 : 1;
-            var (row, col) = PieceUtils.GetBoardPosition(i);
-            int centerDist = Math.Abs(col - 3) + Math.Abs(row - 3);
-            int advancement = isWhite ? (7 - row) : row;
+            int value = isKing ? 5 : 2;
 
-            if (isWhite)
+            int row = i / 4; // Each row has 4 playable fields
+            int col = (i % 4) * 2 + ((row % 2 == 0) ? 1 : 0); // Calculate column (0–7)
+
+            int positionalBonus = 0;
+
+            if (!isKing)
             {
-                white += val;
-                score += val * 1 + advancement * 1 / 4 - centerDist * 1 / 6;
+                // Advancement: more advanced pieces are better
+                int advancement = isWhite ? (7 - row) : row;
+                positionalBonus += advancement;
+
+                // Back row defense
+                if ((isWhite && row == 7) || (!isWhite && row == 0))
+                    positionalBonus += 2;
             }
-            else
-            {
-                black += val;
-                score -= val * 1 + advancement * 1 / 4 - centerDist * 1 / 6;
-            }
+
+            // Edge safety bonus
+            if (col == 0 || col == 7)
+                positionalBonus += 1;
+
+            int totalPieceValue = value + positionalBonus;
+
+            score += isWhite ? totalPieceValue : -totalPieceValue;
         }
 
-        if (white + black < 10) score = score * 3 / 2;
         return forWhite ? score : -score;
     }
+
+
 }
 
 public interface IBoardEvaluator
