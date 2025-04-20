@@ -1,7 +1,6 @@
 ﻿using App.Server;
 using Grpc.Core;
 using GrpcServer;
-using System.Threading.Tasks;
 
 public class Minimax
 {
@@ -13,7 +12,7 @@ public class Minimax
     public Minimax(int depth, int granulation, IBoardEvaluator evaluator, ChannelBase grpcChannel = null)
     {
         _maxDepth = depth;
-        _granulation = _granulation;
+        _granulation = granulation;
         _evaluator = evaluator;
         _grpcClient = grpcChannel != null ? new CheckersService.CheckersServiceClient(grpcChannel) : null;
     }
@@ -27,13 +26,11 @@ public class Minimax
         {
             var simulated = board.Clone();
             simulated.MovePiece(move.from, move.to);
-            int score;
-            Console.WriteLine("Max Depth:" + _maxDepth);
 
-            if (_maxDepth > 1 && _grpcClient != null)
+            int score;
+            if (_grpcClient != null && _maxDepth > _granulation)
             {
-                // Distribute the calculation for subtrees
-                score = DistributedMinimaxSearch(simulated, _maxDepth - 1, !isWhiteTurn).Result;
+                score = GranulatedMinimax(simulated, _maxDepth - 1, !isWhiteTurn, _granulation).Result;
             }
             else
             {
@@ -58,7 +55,7 @@ public class Minimax
 
     private int MinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
     {
-        Console.WriteLine("Depth:" + depth);
+        Console.WriteLine($"[REMOTE] MinimaxSearch: Depth={depth}");
 
         if (depth == 0 || new MoveGenerator().IsGameOver(board))
             return _evaluator.EvaluateBoard(board, isMaximizing);
@@ -87,14 +84,63 @@ public class Minimax
         return bestEval;
     }
 
+    private async Task<int> GranulatedMinimax(CheckersBoard board, int depth, bool isMaximizing, int granulation)
+    {
+        Console.WriteLine($"[GRANULATED] Entry: Depth={depth}, Granulation={granulation}");
+
+        if (depth <= granulation)
+        {
+            Console.WriteLine($"[GRANULATED] Handling locally (Depth={depth} <= Granulation={granulation})");
+            return MinimaxSearch(board, depth, isMaximizing);
+        }
+
+        var generator = new MoveGenerator();
+        var captures = generator.GetMandatoryCaptures(board, isMaximizing);
+        var moves = captures.Count > 0
+            ? generator.GetCaptureMoves(captures)
+            : generator.GetAllValidMoves(board, isMaximizing);
+
+        int bestEval = isMaximizing ? int.MinValue : int.MaxValue;
+
+        foreach (var (from, to) in moves)
+        {
+            var simulated = board.Clone();
+
+            if (captures.Count > 0)
+                new CaptureSimulator().SimulateCapture(simulated, from, to);
+            else
+                simulated.MovePiece(from, to);
+
+            int eval;
+
+            if (_grpcClient != null)
+            {
+                Console.WriteLine($"[GRANULATED] Sending to remote: Subtree at Depth={depth - 1}");
+                eval = await DistributedMinimaxSearch(simulated, depth - 1, !isMaximizing);
+            }
+            else
+            {
+                Console.WriteLine($"[GRANULATED] No gRPC client – fallback to local Minimax at Depth={depth - 1}");
+                eval = MinimaxSearch(simulated, depth - 1, !isMaximizing);
+            }
+
+            bestEval = isMaximizing ? Math.Max(bestEval, eval) : Math.Min(bestEval, eval);
+        }
+
+        return bestEval;
+    }
+
+
     private async Task<int> DistributedMinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
     {
+        Console.WriteLine($"[LOCAL] DistributedMinimaxSearch: Depth={depth}");
+
         var request = new BoardStateRequest
         {
             BoardState = { board.board },
             IsWhiteTurn = isMaximizing,
             Depth = depth,
-            Granulation = _granulation
+            Granulation = 0 
         };
 
         try
@@ -114,8 +160,9 @@ public class Minimax
         }
         catch
         {
-            //return MinimaxSearch(board, depth, isMaximizing);
-            return -1;
+           // return MinimaxSearch(board, depth, isMaximizing);
+           return -1;
         }
     }
+
 }
