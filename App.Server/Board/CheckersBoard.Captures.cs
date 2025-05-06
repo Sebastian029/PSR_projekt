@@ -263,5 +263,10 @@ namespace App.Server
 
             return multipleCaptures.Distinct().ToList();
         }
+
+        public void MovePiece(object from, object to)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

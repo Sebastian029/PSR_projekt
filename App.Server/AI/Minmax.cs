@@ -30,7 +30,8 @@ public class Minimax
             int score;
             if (_grpcClient != null && _maxDepth > _granulation)
             {
-                score = GranulatedMinimax(simulated, _maxDepth - 1, !isWhiteTurn, _granulation).Result;
+                var result = GranulatedMinimaxWithMove(simulated, _maxDepth - 1, !isWhiteTurn, _granulation).Result;
+                score = result.value;
             }
             else
             {
@@ -53,7 +54,7 @@ public class Minimax
         return GetBestMove(board, moves, isWhiteTurn);
     }
 
-    private int MinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
+    public int MinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
     {
         Console.WriteLine($"[REMOTE] MinimaxSearch: Depth={depth}");
 
@@ -84,14 +85,15 @@ public class Minimax
         return bestEval;
     }
 
-    private async Task<int> GranulatedMinimax(CheckersBoard board, int depth, bool isMaximizing, int granulation)
+    private async Task<(int value, int from, int to)> GranulatedMinimaxWithMove(CheckersBoard board, int depth, bool isMaximizing, int granulation)
     {
         Console.WriteLine($"[GRANULATED] Entry: Depth={depth}, Granulation={granulation}");
 
         if (depth <= granulation)
         {
             Console.WriteLine($"[GRANULATED] Handling locally (Depth={depth} <= Granulation={granulation})");
-            return MinimaxSearch(board, depth, isMaximizing);
+            var bestLocalMove = GetBestMoveLocal(board, depth, isMaximizing);
+            return (bestLocalMove.score, bestLocalMove.from, bestLocalMove.to);
         }
 
         var generator = new MoveGenerator();
@@ -101,6 +103,7 @@ public class Minimax
             : generator.GetAllValidMoves(board, isMaximizing);
 
         int bestEval = isMaximizing ? int.MinValue : int.MaxValue;
+        (int from, int to) bestMove = (-1, -1);
 
         foreach (var (from, to) in moves)
         {
@@ -112,7 +115,6 @@ public class Minimax
                 simulated.MovePiece(from, to);
 
             int eval;
-
             if (_grpcClient != null)
             {
                 Console.WriteLine($"[GRANULATED] Sending to remote: Subtree at Depth={depth - 1}");
@@ -124,10 +126,46 @@ public class Minimax
                 eval = MinimaxSearch(simulated, depth - 1, !isMaximizing);
             }
 
-            bestEval = isMaximizing ? Math.Max(bestEval, eval) : Math.Min(bestEval, eval);
+            if ((isMaximizing && eval > bestEval) || (!isMaximizing && eval < bestEval))
+            {
+                bestEval = eval;
+                bestMove = (from, to);
+            }
         }
 
-        return bestEval;
+        return (bestEval, bestMove.from, bestMove.to);
+    }
+
+    private (int score, int from, int to) GetBestMoveLocal(CheckersBoard board, int depth, bool isMaximizing)
+    {
+        var generator = new MoveGenerator();
+        var captures = generator.GetMandatoryCaptures(board, isMaximizing);
+        var moves = captures.Count > 0
+            ? generator.GetCaptureMoves(captures)
+            : generator.GetAllValidMoves(board, isMaximizing);
+
+        int bestEval = isMaximizing ? int.MinValue : int.MaxValue;
+        (int from, int to) bestMove = (-1, -1);
+
+        foreach (var (from, to) in moves)
+        {
+            var simulated = board.Clone();
+
+            if (captures.Count > 0)
+                new CaptureSimulator().SimulateCapture(simulated, from, to);
+            else
+                simulated.MovePiece(from, to);
+
+            int eval = MinimaxSearch(simulated, depth - 1, !isMaximizing);
+
+            if ((isMaximizing && eval > bestEval) || (!isMaximizing && eval < bestEval))
+            {
+                bestEval = eval;
+                bestMove = (from, to);
+            }
+        }
+
+        return (bestEval, bestMove.from, bestMove.to);
     }
 
 
@@ -140,7 +178,7 @@ public class Minimax
             BoardState = { board.board },
             IsWhiteTurn = isMaximizing,
             Depth = depth,
-            Granulation = 0 
+            Granulation = 0
         };
 
         try
@@ -148,22 +186,19 @@ public class Minimax
             var response = await _grpcClient.GetBestValueAsync(request);
             if (response.Success)
             {
-                var tempBoard = board.Clone();
-                tempBoard.MovePiece(response.FromField, response.ToField);
-                return _evaluator.EvaluateBoard(tempBoard, isMaximizing);
+                // Return the direct value from the server
+                return response.Value;
             }
             else
             {
-               // return MinimaxSearch(board, depth, isMaximizing);
-               return -1;
+                Console.WriteLine("[WARNING] Remote evaluation failed, falling back to local");
+                return MinimaxSearch(board, depth, isMaximizing);
             }
         }
         catch (Exception ex)
         {
-            throw new Exception("ERR: " + ex.Message, ex);
-
-            // return MinimaxSearch(board, depth, isMaximizing);
-            // return -1;
+            Console.WriteLine($"[ERROR] Remote evaluation failed: {ex.Message}, falling back to local");
+            return MinimaxSearch(board, depth, isMaximizing);
         }
     }
 

@@ -2,7 +2,7 @@
 
 
 
-public class CaptureSimulator
+public class CaptureSimulatorClient
 {
     public void SimulateCapture(CheckersBoard board, int from, int to)
     {
