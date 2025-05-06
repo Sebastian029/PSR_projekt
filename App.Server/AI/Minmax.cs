@@ -145,7 +145,7 @@ public class Minimax
 
         try
         {
-            var response = await _grpcClient.GetBestMoveAsync(request);
+            var response = await _grpcClient.GetBestValueAsync(request);
             if (response.Success)
             {
                 var tempBoard = board.Clone();
@@ -158,10 +158,12 @@ public class Minimax
                return -1;
             }
         }
-        catch
+        catch (Exception ex)
         {
-           // return MinimaxSearch(board, depth, isMaximizing);
-           return -1;
+            throw new Exception("ERR: " + ex.Message, ex);
+
+            // return MinimaxSearch(board, depth, isMaximizing);
+            // return -1;
         }
     }
 

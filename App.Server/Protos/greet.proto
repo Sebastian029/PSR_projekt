@@ -11,7 +11,7 @@ service Greeter {
 
 service CheckersService {
   // Send the board state and get the best move
-  rpc GetBestMove (BoardStateRequest) returns (MoveResponse);
+  rpc GetBestValue (BoardStateRequest) returns (MoveResponse);
 
   // Stream board updates to clients (optional)
   rpc StreamBoardState (ClientInfo) returns (stream BoardStateUpdate);

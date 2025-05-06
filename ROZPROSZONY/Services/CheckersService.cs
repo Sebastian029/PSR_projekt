@@ -6,7 +6,7 @@ namespace GrpcService
 {
     public class CheckersServiceImpl : CheckersService.CheckersServiceBase
     {
-        public override Task<MoveResponse> GetBestMove(BoardStateRequest request, ServerCallContext context)
+        public override Task<MoveResponse> GetBestValue(BoardStateRequest request, ServerCallContext context)
         {
             try
             {
@@ -19,7 +19,7 @@ namespace GrpcService
 
                 var ai = new CheckersAI(depth, granulation);
 
-                var (fromField, toField) = ai.GetBestMove(tmpBoard, request.IsWhiteTurn);
+                var (fromField, toField) = ai.CalculateOptimalMove(tmpBoard, request.IsWhiteTurn);
                 Console.WriteLine("Client - " + fromField + " to " + toField);
                 
                 return Task.FromResult(new MoveResponse

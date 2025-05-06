@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System.Net;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
 
@@ -13,7 +15,11 @@ namespace GrpcService
             // Existing setup code...
 
             // CheckersGame game = new CheckersGame();
-            // builder.Services.AddSingleton(game);
+            builder.WebHost.UseKestrel(options =>
+{
+    options.Listen(IPAddress.Parse("127.0.0.1"), 5000);
+});
+
             builder.Services.AddGrpc();
             var app = builder.Build();
 

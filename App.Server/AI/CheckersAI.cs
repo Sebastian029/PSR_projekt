@@ -19,7 +19,7 @@ public class CheckersAI
     }
 
     // Rest of the class remains the same
-    public (int fromField, int toField) GetBestMove(CheckersBoard board, bool isWhiteTurn)
+    public (int fromField, int toField) CalculateOptimalMove(CheckersBoard board, bool isWhiteTurn)
     {
         var captures = _moveGenerator.GetMandatoryCaptures(board, isWhiteTurn);
         if (captures.Count > 0)
