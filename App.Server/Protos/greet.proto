@@ -1,35 +1,51 @@
-﻿syntax = "proto3";
+syntax = "proto3";
 
 option csharp_namespace = "GrpcServer";
 
-package greet;
-
-
 service CheckersService {
-  
-  rpc GetBestValue (BoardStateRequest) returns (BestValueResponse);
+  rpc GetBestValue(BoardStateRequest) returns (BestValueResponse);
+  rpc RegisterWorker(WorkerRegistration) returns (RegistrationResponse);
+  rpc GetTask(TaskRequest) returns (CalculationTask);
+  rpc SubmitResult(CalculationResult) returns (ResultAck);
+}
 
+message BoardStateRequest {
+  repeated uint32 board_state = 1;
+  bool is_white_turn = 2;
+  int32 depth = 3;
+  int32 granulation = 4;
 }
 
 message BestValueResponse {
-    bool success = 1;
-    int32 value = 2;
-    int32 from_field = 3;
-    int32 to_field = 4;
+  bool success = 1;
+  int32 value = 2;
+  int32 from_field = 3;
+  int32 to_field = 4;
 }
 
-
-message BoardStateRequest {
-  repeated uint32 boardState = 1;  // The serialized board state
-  bool isWhiteTurn = 2;   // Whose turn it is
-  int32 depth = 3;        // Optional AI search depth
-  int32 granulation = 4;  // Optional AI granulation parameter
+message WorkerRegistration {
+  string worker_id = 1;
+  int32 max_depth = 2;
 }
 
-message MoveResponse {
-  int32 fromField = 1;    // Source position
-  int32 toField = 2;      // Target position
-  bool success = 3;       // Whether a valid move was found
-  string message = 4;
-  int32 BestValue = 5;// Optional message (for errors, etc.)
+message RegistrationResponse {
+  bool success = 1;
+}
+
+message TaskRequest {
+  string worker_id = 1;
+}
+
+message CalculationTask {
+  string task_id = 1;
+  BoardStateRequest request = 2;
+}
+
+message CalculationResult {
+  string task_id = 1;
+  BestValueResponse result = 2;
+}
+
+message ResultAck {
+  bool success = 1;
 }

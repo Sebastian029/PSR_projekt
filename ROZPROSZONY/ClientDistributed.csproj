@@ -1,30 +1,28 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+ <PropertyGroup>
+   <OutputType>Exe</OutputType>
+   <TargetFramework>net8.0</TargetFramework>
+   <ImplicitUsings>enable</ImplicitUsings>
+   <Nullable>enable</Nullable>
+   <GrpcServices>Server</GrpcServices>
+ </PropertyGroup>
+ <ItemGroup>
+   <PackageReference Include="Google.Protobuf" Version="3.30.2" />
+   <PackageReference Include="Grpc.Net.Client" Version="2.70.0" />
+   <PackageReference Include="Grpc.Tools" Version="2.71.0">
+     <PrivateAssets>all</PrivateAssets>
+     <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+   </PackageReference>
+ </ItemGroup>
 
-  <ItemGroup>
-    <None Remove="Protos\greet.proto" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Google.Protobuf" Version="3.30.2" />
-    <PackageReference Include="Grpc.Net.Client" Version="2.70.0" />
-    <PackageReference Include="Grpc.Tools" Version="2.71.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-  </ItemGroup>
+ <ItemGroup>
+   <ProjectReference Include="..\App.Server\App.Server.csproj" />
+ </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\App.Server\App.Server.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Protobuf Include="Protos\greet.proto" GrpcServices="Server" />
-  </ItemGroup>
+<ItemGroup>
+	<Protobuf Include="Protos\*.proto" GrpcServices="Client" />
+	<Folder Include="Protos\" />
+</ItemGroup>
 
 </Project>

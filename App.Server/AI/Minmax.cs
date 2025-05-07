@@ -30,7 +30,7 @@ public class Minimax
             int score;
             if (_grpcClient != null && _maxDepth > _granulation)
             {
-                var result = GranulatedMinimaxWithMove(simulated, _maxDepth - 1, !isWhiteTurn, _granulation).Result;
+                var result =  GranulatedMinimaxWithMove(simulated, _maxDepth - 1, !isWhiteTurn, _granulation).Result;
                 score = result.value;
             }
             else
@@ -175,7 +175,7 @@ public class Minimax
 
         var request = new BoardStateRequest
         {
-            BoardState = { board.board },
+            BoardState = { board.board }, 
             IsWhiteTurn = isMaximizing,
             Depth = depth,
             Granulation = 0
@@ -186,7 +186,7 @@ public class Minimax
             var response = await _grpcClient.GetBestValueAsync(request);
             if (response.Success)
             {
-                // Return the direct value from the server
+                Console.WriteLine(response.Value);
                 return response.Value;
             }
             else
