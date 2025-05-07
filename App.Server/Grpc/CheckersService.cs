@@ -47,14 +47,12 @@ namespace GrpcService
             TaskRequest request,
             ServerCallContext context)
         {
-            if (_coordinator.TryGetNextTask(out var task))
+            // Przekazujemy workerId do metody TryGetNextTask
+            if (_coordinator.TryGetNextTask(request.WorkerId, out var task))
             {
                 return Task.FromResult(task);
             }
-            else
-            {
-                return Task.FromResult(new CalculationTask());
-            }
+            return Task.FromResult(new CalculationTask());
         }
 
         public override Task<ResultAck> SubmitResult(

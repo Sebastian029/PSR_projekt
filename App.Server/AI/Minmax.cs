@@ -30,7 +30,7 @@ public class Minimax
             int score;
             if (_grpcClient != null && _maxDepth > _granulation)
             {
-                var result =  GranulatedMinimaxWithMove(simulated, _maxDepth - 1, !isWhiteTurn, _granulation).Result;
+                var result = GranulatedMinimaxWithMoveParallel(simulated, _maxDepth - 1, !isWhiteTurn, _granulation).Result;
                 score = result.value;
             }
             else
@@ -85,7 +85,7 @@ public class Minimax
         return bestEval;
     }
 
-    private async Task<(int value, int from, int to)> GranulatedMinimaxWithMove(CheckersBoard board, int depth, bool isMaximizing, int granulation)
+    private async Task<(int value, int from, int to)> GranulatedMinimaxWithMoveParallel(CheckersBoard board, int depth, bool isMaximizing, int granulation)
     {
         Console.WriteLine($"[GRANULATED] Entry: Depth={depth}, Granulation={granulation}");
 
@@ -105,36 +105,36 @@ public class Minimax
         int bestEval = isMaximizing ? int.MinValue : int.MaxValue;
         (int from, int to) bestMove = (-1, -1);
 
+        var tasks = new List<Task<(int eval, (int from, int to) move)>>();
+
+        // Rozpocznij WSZYSTKIE zadania równolegle
         foreach (var (from, to) in moves)
         {
             var simulated = board.Clone();
-
             if (captures.Count > 0)
                 new CaptureSimulator().SimulateCapture(simulated, from, to);
             else
                 simulated.MovePiece(from, to);
 
-            int eval;
-            if (_grpcClient != null)
+            tasks.Add(Task.Run(async () =>
             {
-                Console.WriteLine($"[GRANULATED] Sending to remote: Subtree at Depth={depth - 1}");
-                eval = await DistributedMinimaxSearch(simulated, depth - 1, !isMaximizing);
-            }
-            else
-            {
-                Console.WriteLine($"[GRANULATED] No gRPC client – fallback to local Minimax at Depth={depth - 1}");
-                eval = MinimaxSearch(simulated, depth - 1, !isMaximizing);
-            }
-
-            if ((isMaximizing && eval > bestEval) || (!isMaximizing && eval < bestEval))
-            {
-                bestEval = eval;
-                bestMove = (from, to);
-            }
+                int score = await DistributedMinimaxSearch(simulated, depth - 1, !isMaximizing);
+                return (score, from, to);
+            }));
         }
 
-        return (bestEval, bestMove.from, bestMove.to);
+        // Czekaj na WSZYSTKIE wyniki
+        var results = await Task.WhenAll(tasks);
+
+        var bestResult = isMaximizing
+    ? results.OrderByDescending(r => r.score).First()
+    : results.OrderBy(r => r.score).First();
+        // Wybierz najlepszy ruch
+        return isMaximizing
+            ? results.OrderByDescending(r => r.eval).First()
+            : results.OrderBy(r => r.eval).First();
     }
+
 
     private (int score, int from, int to) GetBestMoveLocal(CheckersBoard board, int depth, bool isMaximizing)
     {
