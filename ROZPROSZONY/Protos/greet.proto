@@ -5,21 +5,10 @@ option csharp_namespace = "GrpcServer";
 package greet;
 
 
-service Greeter {
-  rpc Subscribe (ClientInfo) returns (stream PersonalizedUpdate);
-}
-
 service CheckersService {
-  // Send the board state and get the best move
+  
   rpc GetBestValue (BoardStateRequest) returns (BestValueResponse);
 
-  // Stream board updates to clients (optional)
-  rpc StreamBoardState (ClientInfo) returns (stream BoardStateUpdate);
-}
-
-message ClientInfo {
-  string client_name = 1;  // Opcjonalna nazwa klienta
-  string desired_role = 2; // Opcjonalna żądana rola
 }
 
 message BestValueResponse {
@@ -29,13 +18,6 @@ message BestValueResponse {
     int32 to_field = 4;
 }
 
-message PersonalizedUpdate {
-  string client_id = 1;      // Unikalne ID nadane przez serwer
-  string client_role = 2;    // Rola przypisana przez serwer
-  string message = 3;
-  string custom_data = 4;    // Dane specyficzne dla klienta
-  bytes binary_payload = 5;  // Dane binarne (opcjonalne)
-}
 
 message BoardStateRequest {
   repeated uint32 boardState = 1;  // The serialized board state
@@ -48,13 +30,6 @@ message MoveResponse {
   int32 fromField = 1;    // Source position
   int32 toField = 2;      // Target position
   bool success = 3;       // Whether a valid move was found
-  string message = 4; 
-  int32 BestValue = 5; // Optional best value for the move
-}
-
-message BoardStateUpdate {
-  repeated uint32 boardState = 1;
-  bool isWhiteTurn = 2;
-  bool gameOver = 3;
-  string winner = 4;
+  string message = 4;
+  int32 BestValue = 5;// Optional message (for errors, etc.)
 }
