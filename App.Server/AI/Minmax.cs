@@ -87,52 +87,39 @@ public class Minimax
 
     private async Task<(int value, int from, int to)> GranulatedMinimaxWithMoveParallel(CheckersBoard board, int depth, bool isMaximizing, int granulation)
     {
-        Console.WriteLine($"[GRANULATED] Entry: Depth={depth}, Granulation={granulation}");
-
-        if (depth <= granulation)
-        {
-            Console.WriteLine($"[GRANULATED] Handling locally (Depth={depth} <= Granulation={granulation})");
-            var bestLocalMove = GetBestMoveLocal(board, depth, isMaximizing);
-            return (bestLocalMove.score, bestLocalMove.from, bestLocalMove.to);
-        }
-
         var generator = new MoveGenerator();
         var captures = generator.GetMandatoryCaptures(board, isMaximizing);
         var moves = captures.Count > 0
             ? generator.GetCaptureMoves(captures)
             : generator.GetAllValidMoves(board, isMaximizing);
 
-        int bestEval = isMaximizing ? int.MinValue : int.MaxValue;
-        (int from, int to) bestMove = (-1, -1);
-
-        var tasks = new List<Task<(int eval, (int from, int to) move)>>();
-
-        // Rozpocznij WSZYSTKIE zadania równolegle
-        foreach (var (from, to) in moves)
+        // Tworzymy listę zadań z poprawnym typem zwracanym
+        var tasks = moves.Select(async move =>
         {
+            var (from, to) = move;
             var simulated = board.Clone();
+
             if (captures.Count > 0)
                 new CaptureSimulator().SimulateCapture(simulated, from, to);
             else
                 simulated.MovePiece(from, to);
 
-            tasks.Add(Task.Run(async () =>
-            {
-                int score = await DistributedMinimaxSearch(simulated, depth - 1, !isMaximizing);
-                return (score, from, to);
-            }));
-        }
+            int score = await DistributedMinimaxSearch(simulated, depth - 1, !isMaximizing);
+            return (value: score, from, to); // Zwracamy w odpowiednim formacie
+        }).ToList();
 
-        // Czekaj na WSZYSTKIE wyniki
         var results = await Task.WhenAll(tasks);
 
-        var bestResult = isMaximizing
-    ? results.OrderByDescending(r => r.score).First()
-    : results.OrderBy(r => r.score).First();
-        // Wybierz najlepszy ruch
-        return isMaximizing
-            ? results.OrderByDescending(r => r.eval).First()
-            : results.OrderBy(r => r.eval).First();
+        if (isMaximizing)
+        {
+            var best = results.OrderByDescending(r => r.value).First();
+            return best;
+        }
+        else
+        {
+            var best = results.OrderBy(r => r.value).First();
+            return best;
+        }
     }
 
 
@@ -175,7 +162,7 @@ public class Minimax
 
         var request = new BoardStateRequest
         {
-            BoardState = { board.board }, 
+            BoardState = { board.board },
             IsWhiteTurn = isMaximizing,
             Depth = depth,
             Granulation = 0
