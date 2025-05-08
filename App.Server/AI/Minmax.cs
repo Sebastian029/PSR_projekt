@@ -155,8 +155,7 @@ public class Minimax
         return (bestEval, bestMove.from, bestMove.to);
     }
 
-
-    private async Task<int> DistributedMinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
+    public async Task<int> DistributedMinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
     {
         Console.WriteLine($"[LOCAL] DistributedMinimaxSearch: Depth={depth}");
 
@@ -165,25 +164,45 @@ public class Minimax
             BoardState = { board.board },
             IsWhiteTurn = isMaximizing,
             Depth = depth,
-            Granulation = 0
+            Granulation = 0,
+            ClientStartTicks = DateTime.UtcNow.Ticks
         };
 
         try
         {
+            var startTime = DateTime.UtcNow;
             var response = await _grpcClient.GetBestValueAsync(request);
+            var endTime = DateTime.UtcNow;
+
             if (response.Success)
             {
-                Console.WriteLine(response.Value);
+                var totalTime = endTime - startTime;
+                var computationTime = TimeSpan.FromTicks(response.WorkerEndTicks - response.WorkerStartTicks);
+                var communicationTime = totalTime - computationTime;
+
+                // Logowanie do konsoli
+                Console.WriteLine($"[TIMING] Total: {totalTime.TotalMilliseconds}ms, " +
+                                $"Computation: {computationTime.TotalMilliseconds}ms, " +
+                                $"Communication: {communicationTime.TotalMilliseconds}ms");
+
+                // Logowanie do pliku
+                PerformanceLogger.LogTiming(totalTime, computationTime, communicationTime,
+                                          depth, 0, response.Success);
+
                 return response.Value;
             }
             else
             {
+                PerformanceLogger.LogTiming(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero,
+                                          depth, 0, false);
                 Console.WriteLine("[WARNING] Remote evaluation failed, falling back to local");
                 return MinimaxSearch(board, depth, isMaximizing);
             }
         }
         catch (Exception ex)
         {
+            PerformanceLogger.LogTiming(TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero,
+                                      depth, 0, false);
             Console.WriteLine($"[ERROR] Remote evaluation failed: {ex.Message}, falling back to local");
             return MinimaxSearch(board, depth, isMaximizing);
         }

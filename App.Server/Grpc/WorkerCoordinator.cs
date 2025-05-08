@@ -66,7 +66,6 @@ namespace GrpcService
             task = null;
             return false;
         }
-
         public void SubmitResult(string taskId, BestValueResponse result)
         {
             if (_pendingResults.TryRemove(taskId, out var tcs))
@@ -75,6 +74,10 @@ namespace GrpcService
                 {
                     Console.WriteLine($"[WARNING] Task {taskId} not found in active tasks");
                 }
+
+                var processingTime = DateTime.UtcNow - taskInfo.startTime;
+                Console.WriteLine($"[TASK COMPLETED] Task {taskId} completed in {processingTime.TotalMilliseconds}ms");
+
                 tcs.SetResult(result);
                 LogTaskStatus($"Task {taskId} completed by {taskInfo.workerId}");
             }

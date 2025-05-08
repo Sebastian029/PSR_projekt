@@ -55,27 +55,25 @@ namespace GrpcService
 
         static BestValueResponse CalculateBestMove(BoardStateRequest request)
         {
+            var workerStartTicks = DateTime.UtcNow.Ticks;
+
             try
             {
                 var tmpBoard = new CheckersBoard();
                 tmpBoard.board = request.BoardState.ToArray();
 
-                // Use the requested depth if provided, otherwise default to 5
                 int depth = request.Depth > 0 ? request.Depth : 5;
                 int granulation = request.Granulation > 0 ? request.Granulation : 1;
 
-                // Utwórz ewaluator i AI
                 var evaluator = new EvaluatorClient();
                 var ai = new MinimaxClient(depth, granulation, evaluator);
 
-                // Pobierz wszystkie możliwe ruchy
                 var moveGenerator = new MoveGeneratorClient();
                 var captures = moveGenerator.GetMandatoryCaptures(tmpBoard, request.IsWhiteTurn);
                 var moves = captures.Count > 0
                     ? moveGenerator.GetCaptureMoves(captures).Select(m => (fromField: m.Item1, toField: m.Item2))
                     : moveGenerator.GetAllValidMoves(tmpBoard, request.IsWhiteTurn).Select(m => (fromField: m.Item1, toField: m.Item2));
 
-                // Znajdź najlepszy ruch i jego wartość
                 int bestValue = request.IsWhiteTurn ? int.MinValue : int.MaxValue;
                 (int fromField, int toField) bestMove = (-1, -1);
 
@@ -88,10 +86,8 @@ namespace GrpcService
                     else
                         simulatedBoard.MovePiece(move.fromField, move.toField);
 
-                    // Oceń pozycję
                     int currentValue = ai.MinimaxSearch(simulatedBoard, depth - 1, !request.IsWhiteTurn);
 
-                    // Aktualizuj najlepszą wartość i ruch
                     if ((request.IsWhiteTurn && currentValue > bestValue) ||
                         (!request.IsWhiteTurn && currentValue < bestValue))
                     {
@@ -100,7 +96,9 @@ namespace GrpcService
                     }
                 }
 
-                Console.WriteLine($"Best move: {bestMove.fromField} to {bestMove.toField} with value {bestValue}");
+                var workerEndTicks = DateTime.UtcNow.Ticks;
+                var computationTime = TimeSpan.FromTicks(workerEndTicks - workerStartTicks);
+                Console.WriteLine($"Computation time: {computationTime.TotalMilliseconds}ms");
 
                 return new BestValueResponse
                 {
@@ -108,21 +106,26 @@ namespace GrpcService
                     FromField = bestMove.fromField,
                     ToField = bestMove.toField,
                     Success = true,
+                    WorkerStartTicks = workerStartTicks,
+                    WorkerEndTicks = workerEndTicks
                 };
             }
             catch (Exception ex)
             {
+                var workerEndTicks = DateTime.UtcNow.Ticks;
+                Console.WriteLine($"Error during calculation: {ex.Message}");
                 return new BestValueResponse
                 {
                     Value = request.IsWhiteTurn ? int.MinValue : int.MaxValue,
                     FromField = -1,
                     ToField = -1,
                     Success = false,
+                    WorkerStartTicks = workerStartTicks,
+                    WorkerEndTicks = workerEndTicks
                 };
             }
         }
     }
 
-   
-  
-}
+
+    }

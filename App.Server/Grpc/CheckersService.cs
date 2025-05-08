@@ -23,12 +23,15 @@ namespace GrpcService
         }
 
         public override async Task<BestValueResponse> GetBestValue(
-            BoardStateRequest request,
-            ServerCallContext context)
+     BoardStateRequest request,
+     ServerCallContext context)
         {
             try
             {
-                return await _coordinator.DistributeCalculationAsync(request);
+                var startTime = DateTime.UtcNow.Ticks;
+                var result = await _coordinator.DistributeCalculationAsync(request);
+                result.WorkerStartTicks = startTime;
+                return result;
             }
             catch (Exception ex)
             {
@@ -38,7 +41,9 @@ namespace GrpcService
                     Success = false,
                     Value = request.IsWhiteTurn ? int.MinValue : int.MaxValue,
                     FromField = -1,
-                    ToField = -1
+                    ToField = -1,
+                    WorkerStartTicks = DateTime.UtcNow.Ticks,
+                    WorkerEndTicks = DateTime.UtcNow.Ticks
                 };
             }
         }
