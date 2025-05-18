@@ -1,16 +1,21 @@
 ﻿using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using GrpcService;
 
 namespace App.Server.WebSocketHandlers
 {
     public class CheckersWebSocketHandler
     {
         private readonly CheckersGame _game;
+        private readonly WorkerCoordinator _workerCoordinator;
 
-        public CheckersWebSocketHandler(CheckersGame game)
+
+        public CheckersWebSocketHandler(CheckersGame game, WorkerCoordinator workerCoordinator)
         {
             _game = game;
+            _workerCoordinator = workerCoordinator;
+
         }
 
         public async Task HandleWebSocket(WebSocket webSocket, string socketId)
@@ -172,26 +177,29 @@ namespace App.Server.WebSocketHandlers
         {
             var timer = new GameTimer();
             timer.Start();
-
+            
             while (!_game.CheckGameOver())
             {
                 await ProcessComputerTurn(webSocket);
                 if(!_game.IsPerformanceTest)
-                    await Task.Delay(300);            }
-
+                    await Task.Delay(300);
+            }
             timer.Stop();
-
             await SendGameState(webSocket);
-
             if (_game.IsPerformanceTest)
             {
+                // Get workers count from WorkerCoordinator
+                int workersCount = _workerCoordinator.getWorkersNumber();
+        
                 GameLogger.LogGame(
                     _game.Depth,
                     _game.Granulation,
+                    workersCount,
                     timer.ElapsedSeconds
                 );
             }
         }
+
 
 
         private async Task HandleReset(WebSocket webSocket)

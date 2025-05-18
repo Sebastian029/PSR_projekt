@@ -18,7 +18,9 @@ namespace GrpcService
             _workers[workerId] = new WorkerInfo(maxDepth);
             LogWorkerStatus();
         }
-
+        
+        public int getWorkersNumber() => _workers.Count;
+        
         public async Task<BestValueResponse> DistributeCalculationAsync(BoardStateRequest request)
         {
             var taskId = Guid.NewGuid().ToString();
