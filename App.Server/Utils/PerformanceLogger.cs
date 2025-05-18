@@ -53,12 +53,12 @@ public static class PerformanceLogger
                 _isFirstWrite = false;
             }
 
-            var logMessage = $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}," +
-                           $"{totalTime.TotalMilliseconds:F2}," +
-                           $"{computationTime.TotalMilliseconds:F2}," +
-                           $"{communicationTime.TotalMilliseconds:F2}," +
-                           $"{depth}," +
-                           $"{granulation}," +
+            var logMessage = $"{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss.fff}; " +
+                           $"{totalTime.TotalMilliseconds:F2}; " +
+                           $"{computationTime.TotalMilliseconds:F2}; " +
+                           $"{communicationTime.TotalMilliseconds:F2}; " +
+                           $"{depth}; " +
+                           $"{granulation}; " +
                            $"{(success ? "True" : "False")}";
 
             File.AppendAllText(LogFilePath, logMessage + Environment.NewLine);
