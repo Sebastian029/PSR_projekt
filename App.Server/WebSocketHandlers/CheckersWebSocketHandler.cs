@@ -170,6 +170,8 @@ namespace App.Server.WebSocketHandlers
 
         private async Task StartComputerVsComputerGame(WebSocket webSocket)
         {
+            var timer = new GameTimer();
+            timer.Start();
 
             while (!_game.CheckGameOver())
             {
@@ -177,11 +179,18 @@ namespace App.Server.WebSocketHandlers
                 if(!_game.IsPerformanceTest)
                     await Task.Delay(300);            }
 
-           
+            timer.Stop();
 
             await SendGameState(webSocket);
 
-
+            if (_game.IsPerformanceTest)
+            {
+                GameLogger.LogGame(
+                    _game.Depth,
+                    _game.Granulation,
+                    timer.ElapsedSeconds
+                );
+            }
         }
 
 
