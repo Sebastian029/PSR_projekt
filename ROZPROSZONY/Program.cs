@@ -2,106 +2,152 @@
 using Grpc.Net.Client;
 using GrpcServer;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
-namespace GrpcService
+namespace CheckersWorker
 {
     class Program
     {
         static async Task Main(string[] args)
         {
+            // Allow HTTP/2 without TLS for development
+            AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+            
             Console.WriteLine("Starting Checkers AI Worker...");
-
+            
+            // Create a unique worker ID
+            string workerId = $"Worker-{Guid.NewGuid().ToString().Substring(0, 8)}";
+            
+            // Connect to the gRPC server
             using var channel = GrpcChannel.ForAddress("http://localhost:5000");
             var client = new CheckersService.CheckersServiceClient(channel);
-
-            var workerId = Guid.NewGuid().ToString();
-
-            await client.RegisterWorkerAsync(new WorkerRegistration
+            
+            // Register the worker with the server
+            try
             {
-                WorkerId = workerId,
-                //MaxDepth = 5
-            });
-
-            Console.WriteLine($"Worker {workerId} ready for tasks");
-
+                var registrationResponse = await client.RegisterWorkerAsync(new WorkerRegistration
+                {
+                    WorkerId = workerId,
+                    MaxDepth = 8  // Configure as needed
+                });
+                
+                if (registrationResponse.Success)
+                {
+                    Console.WriteLine($"Worker {workerId} registered successfully");
+                }
+                else
+                {
+                    Console.WriteLine("Worker registration failed");
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error registering worker: {ex.Message}");
+                return;
+            }
+            
+            // Main worker loop
             while (true)
             {
                 try
                 {
-
-                    var task = await client.GetTaskAsync(new TaskRequest { WorkerId = workerId });
-                    //Console.WriteLine($"Received task {task.TaskId}");
-                    if (task.Request == null)
+                    // Request a task from the server
+                    var taskRequest = await client.GetTaskAsync(new TaskRequest { WorkerId = workerId });
+                    
+                    // Check if we received a valid task
+                    if (taskRequest == null || taskRequest.Request == null || string.IsNullOrEmpty(taskRequest.TaskId))
                     {
-                        //Console.WriteLine("Received null request.");
+                        // No task available, wait before trying again
+                        await Task.Delay(100);
                         continue;
                     }
-                    var result = CalculateBestMove(task.Request);
-
+                    
+                    Console.WriteLine($"Received task {taskRequest.TaskId}");
+                    
+                    // Process the task
+                    var result = CalculateBestMove(taskRequest.Request);
+                    
+                    // Submit the result back to the server
                     await client.SubmitResultAsync(new CalculationResult
                     {
-                        TaskId = task.TaskId,
+                        TaskId = taskRequest.TaskId,
                         Result = result
                     });
+                    
+                    Console.WriteLine($"Completed task {taskRequest.TaskId}");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error: {ex.Message}");
-                    await Task.Delay(5000);
+                    Console.WriteLine($"Error processing task: {ex.Message}");
+                    await Task.Delay(1000); // Wait before retrying
                 }
             }
         }
-
+        
         static BestValueResponse CalculateBestMove(BoardStateRequest request)
         {
             var workerStartTicks = DateTime.UtcNow.Ticks;
+            
             try
             {
-                var tmpBoard = new CheckersBoard();
-                tmpBoard.board = request.BoardState.ToArray();
-        
-                // Use the depth from the request
-                int depth = request.Depth;
-                int granulation = request.Granulation > 0 ? request.Granulation : 1;
-        
+                // Create a board from the request
+                var board = new CheckersBoard();
+                board.board = request.BoardState.ToArray();
+                
+                // Create evaluator and move generator
                 var evaluator = new EvaluatorClient();
-                // Create MinimaxClient with the dynamic depth
-                var ai = new MinimaxClient(depth, granulation, evaluator);
-
-
                 var moveGenerator = new MoveGeneratorClient();
-                var captures = moveGenerator.GetMandatoryCaptures(tmpBoard, request.IsWhiteTurn);
+                
+                // Get valid moves
+                var captures = moveGenerator.GetMandatoryCaptures(board, request.IsWhiteTurn);
                 var moves = captures.Count > 0
-                    ? moveGenerator.GetCaptureMoves(captures).Select(m => (fromField: m.Item1, toField: m.Item2))
-                    : moveGenerator.GetAllValidMoves(tmpBoard, request.IsWhiteTurn).Select(m => (fromField: m.Item1, toField: m.Item2));
-
+                    ? moveGenerator.GetCaptureMoves(captures)
+                    : moveGenerator.GetAllValidMoves(board, request.IsWhiteTurn);
+                
+                if (moves.Count == 0)
+                {
+                    return new BestValueResponse
+                    {
+                        Value = request.IsWhiteTurn ? int.MinValue : int.MaxValue,
+                        FromField = -1,
+                        ToField = -1,
+                        Success = true,
+                        WorkerStartTicks = workerStartTicks,
+                        WorkerEndTicks = DateTime.UtcNow.Ticks
+                    };
+                }
+                
+                // Create minimax instance for local calculation
+                var minimax = new MinimaxClient(request.Depth, request.Granulation, evaluator);
+                
+                // Find best move
                 int bestValue = request.IsWhiteTurn ? int.MinValue : int.MaxValue;
                 (int fromField, int toField) bestMove = (-1, -1);
-
-                foreach (var move in moves)
+                
+                foreach (var (from, to) in moves)
                 {
-                    var simulatedBoard = tmpBoard.Clone();
-
+                    var simulated = board.Clone();
                     if (captures.Count > 0)
-                        new CaptureSimulatorClient().SimulateCapture(simulatedBoard, move.fromField, move.toField);
+                        new CaptureSimulatorClient().SimulateCapture(simulated, from, to);
                     else
-                        simulatedBoard.MovePiece(move.fromField, move.toField);
-
-                    int currentValue = ai.MinimaxSearch(simulatedBoard, depth - 1, !request.IsWhiteTurn);
-
+                        simulated.MovePiece(from, to);
+                    
+                    int currentValue = minimax.MinimaxSearch(simulated, request.Depth - 1, !request.IsWhiteTurn);
+                    
                     if ((request.IsWhiteTurn && currentValue > bestValue) ||
                         (!request.IsWhiteTurn && currentValue < bestValue))
                     {
                         bestValue = currentValue;
-                        bestMove = move;
+                        bestMove = (from, to);
                     }
                 }
-
+                
                 var workerEndTicks = DateTime.UtcNow.Ticks;
                 var computationTime = TimeSpan.FromTicks(workerEndTicks - workerStartTicks);
                 Console.WriteLine($"Computation time: {computationTime.TotalMilliseconds}ms");
-
+                
                 return new BestValueResponse
                 {
                     Value = bestValue,
@@ -114,20 +160,17 @@ namespace GrpcService
             }
             catch (Exception ex)
             {
-                var workerEndTicks = DateTime.UtcNow.Ticks;
-                Console.WriteLine($"Error during calculation: {ex.Message}");
+                Console.WriteLine($"Error calculating best move: {ex.Message}");
                 return new BestValueResponse
                 {
-                    Value = request.IsWhiteTurn ? int.MinValue : int.MaxValue,
+                    Value = 0,
                     FromField = -1,
                     ToField = -1,
                     Success = false,
                     WorkerStartTicks = workerStartTicks,
-                    WorkerEndTicks = workerEndTicks
+                    WorkerEndTicks = DateTime.UtcNow.Ticks
                 };
             }
         }
     }
-
-
-    }
+}

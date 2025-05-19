@@ -3,7 +3,7 @@ syntax = "proto3";
 option csharp_namespace = "GrpcServer";
 
 service CheckersService {
-  rpc GetBestValue(BoardStateRequest) returns (BestValueResponse);
+  rpc EvaluatePosition(BoardStateRequest) returns (ScoreResponse);
   rpc RegisterWorker(WorkerRegistration) returns (RegistrationResponse);
   rpc GetTask(TaskRequest) returns (CalculationTask);
   rpc SubmitResult(CalculationResult) returns (ResultAck);
@@ -14,16 +14,14 @@ message BoardStateRequest {
   bool is_white_turn = 2;
   int32 depth = 3;
   int32 granulation = 4;
-  int64 client_start_ticks = 5;  // Nowe pole - czas wys³ania od klienta
+  int64 client_start_ticks = 5;
 }
 
-message BestValueResponse {
-  int32 value = 1;
-  int32 from_field = 2;
-  int32 to_field = 3;
-  bool success = 4;
-  int64 worker_start_ticks = 5;  // Czas odebrania zadania przez workera
-  int64 worker_end_ticks = 6;    // Czas zakoñczenia obliczeñ przez workera
+message ScoreResponse {
+  int32 score = 1;
+  bool success = 2;
+  int64 worker_start_ticks = 3;
+  int64 worker_end_ticks = 4;
 }
 
 message WorkerRegistration {
@@ -46,7 +44,7 @@ message CalculationTask {
 
 message CalculationResult {
   string task_id = 1;
-  BestValueResponse result = 2;
+  ScoreResponse result = 2;
 }
 
 message ResultAck {

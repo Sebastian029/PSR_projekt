@@ -1,6 +1,7 @@
 ﻿using App.Server;
 using Grpc.Core;
 using GrpcServer;
+using System;
 using System.Threading.Tasks;
 
 namespace GrpcService
@@ -8,7 +9,7 @@ namespace GrpcService
     public class CheckersServiceImpl : CheckersService.CheckersServiceBase
     {
         private readonly WorkerCoordinator _coordinator;
-
+        
         public CheckersServiceImpl(WorkerCoordinator coordinator)
         {
             _coordinator = coordinator;
@@ -22,26 +23,24 @@ namespace GrpcService
             return Task.FromResult(new RegistrationResponse { Success = true });
         }
 
-        public override async Task<BestValueResponse> GetBestValue(
-     BoardStateRequest request,
-     ServerCallContext context)
+        public override async Task<ScoreResponse> EvaluatePosition(
+            BoardStateRequest request,
+            ServerCallContext context)
         {
             try
             {
                 var startTime = DateTime.UtcNow.Ticks;
-                var result = await _coordinator.DistributeCalculationAsync(request);
+                var result = await _coordinator.DistributeScoreCalculationAsync(request);
                 result.WorkerStartTicks = startTime;
                 return result;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in GetBestValue: {ex.Message}");
-                return new BestValueResponse
+                Console.WriteLine($"Error in EvaluatePosition: {ex.Message}");
+                return new ScoreResponse
                 {
                     Success = false,
-                    Value = request.IsWhiteTurn ? int.MinValue : int.MaxValue,
-                    FromField = -1,
-                    ToField = -1,
+                    Score = request.IsWhiteTurn ? int.MinValue : int.MaxValue,
                     WorkerStartTicks = DateTime.UtcNow.Ticks,
                     WorkerEndTicks = DateTime.UtcNow.Ticks
                 };
@@ -52,11 +51,11 @@ namespace GrpcService
             TaskRequest request,
             ServerCallContext context)
         {
-            // Przekazujemy workerId do metody TryGetNextTask
             if (_coordinator.TryGetNextTask(request.WorkerId, out var task))
             {
                 return Task.FromResult(task);
             }
+            
             return Task.FromResult(new CalculationTask());
         }
 
