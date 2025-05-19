@@ -199,9 +199,7 @@ namespace App.Server.WebSocketHandlers
                 );
             }
         }
-
-
-
+        
         private async Task HandleReset(WebSocket webSocket)
         {
             _game.GetBoardStateReset();

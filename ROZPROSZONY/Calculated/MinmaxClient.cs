@@ -13,14 +13,15 @@ public class MinimaxClient
         _maxDepth = depth;
         _granulation = granulation;
         _evaluator = evaluator;
+        Console.WriteLine("GET DEPTH " +  depth);
+        
     }
 
    
-
-
     public int MinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
     {
-        Console.WriteLine($"[REMOTE] MinimaxSearch: Depth={depth}");
+        //if(depth >= 5)
+            Console.WriteLine($"[REMOTE] MinimaxSearch: Depth={depth}");
 
         if (depth == 0 || new MoveGenerator().IsGameOver(board))
             return _evaluator.EvaluateBoard(board, isMaximizing);

@@ -20,7 +20,7 @@ namespace GrpcService
             await client.RegisterWorkerAsync(new WorkerRegistration
             {
                 WorkerId = workerId,
-                MaxDepth = 5
+                //MaxDepth = 5
             });
 
             Console.WriteLine($"Worker {workerId} ready for tasks");
@@ -56,17 +56,19 @@ namespace GrpcService
         static BestValueResponse CalculateBestMove(BoardStateRequest request)
         {
             var workerStartTicks = DateTime.UtcNow.Ticks;
-
             try
             {
                 var tmpBoard = new CheckersBoard();
                 tmpBoard.board = request.BoardState.ToArray();
-
-                int depth = request.Depth > 0 ? request.Depth : 5;
+        
+                // Use the depth from the request
+                int depth = request.Depth;
                 int granulation = request.Granulation > 0 ? request.Granulation : 1;
-
+        
                 var evaluator = new EvaluatorClient();
+                // Create MinimaxClient with the dynamic depth
                 var ai = new MinimaxClient(depth, granulation, evaluator);
+
 
                 var moveGenerator = new MoveGeneratorClient();
                 var captures = moveGenerator.GetMandatoryCaptures(tmpBoard, request.IsWhiteTurn);
