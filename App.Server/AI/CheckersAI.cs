@@ -78,13 +78,11 @@ public class CheckersAI
             }
         }
         
-        // Create new Minimax instance with updated settings
         _minimax = new Minimax(depth,granulation, _evaluator, _minimaxDistributor);
     }
     
-    // Simple overload with just depth and granulation
     public void updateSettings(int depth, int granulation)
     {
-        updateSettings(depth, granulation);
+        updateSettings(depth, granulation, null);
     }
 }
