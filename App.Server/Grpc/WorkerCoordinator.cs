@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using GrpcServer;
-
 
 public class WorkerCoordinator
 {
@@ -12,10 +12,27 @@ public class WorkerCoordinator
     private readonly ConcurrentDictionary<string, TaskCompletionSource<ScoreResponse>> _pendingResults = new();
     private readonly ConcurrentDictionary<string, (string workerId, DateTime startTime)> _activeTasks = new();
     private readonly ConcurrentDictionary<string, int> _processedTasks = new();
+    private readonly string _logFilePath = "log.txt";
+
+    private void LogToFile(string message)
+    {
+        try
+        {
+            using (var writer = new StreamWriter(_logFilePath, true))
+            {
+                writer.WriteLine($"[{DateTime.UtcNow:yyyy-MM-dd HH:mm:ss}] {message}");
+            }
+        }
+        catch (Exception ex)
+        {
+          //  Console.WriteLine($"[ERROR] Failed to write to log file: {ex.Message}");
+        }
+    }
 
     public void RegisterWorker(string workerId, int maxDepth)
     {
         _workers[workerId] = new WorkerInfo(maxDepth);
+        LogToFile($"Worker registered: {workerId}, MaxDepth: {maxDepth}");
         LogWorkerStatus();
     }
     
@@ -32,10 +49,12 @@ public class WorkerCoordinator
         
         if (!_pendingResults.TryAdd(taskId, tcs))
         {
+            LogToFile($"ERROR: Task {taskId} already exists in pending results");
             throw new InvalidOperationException($"Task {taskId} already exists in pending results");
         }
         
         _pendingTasks.Enqueue(task);
+        LogToFile($"New task created: {taskId}");
         LogTaskStatus($"New task created: {taskId}");
         
         return await tcs.Task;
@@ -57,6 +76,7 @@ public class WorkerCoordinator
             {
                 if (_activeTasks.TryAdd(task.TaskId, (workerId, DateTime.UtcNow)))
                 {
+                    LogToFile($"Task {task.TaskId} assigned to {workerId}");
                     LogTaskStatus($"Task {task.TaskId} assigned to {workerId}");
                     return true;
                 }
@@ -73,17 +93,20 @@ public class WorkerCoordinator
         {
             if (!_activeTasks.TryRemove(taskId, out var taskInfo))
             {
-                Console.WriteLine($"[WARNING] Task {taskId} not found in active tasks");
+              //  Console.WriteLine($"[WARNING] Task {taskId} not found in active tasks");
+                LogToFile($"[WARNING] Task {taskId} not found in active tasks");
             }
             
             var processingTime = DateTime.UtcNow - taskInfo.startTime;
-            Console.WriteLine($"[TASK COMPLETED] Task {taskId} completed in {processingTime.TotalMilliseconds}ms");
+           // Console.WriteLine($"[TASK COMPLETED] Task {taskId} completed in {processingTime.TotalMilliseconds}ms");
+            LogToFile($"[TASK COMPLETED] Task {taskId} completed by {taskInfo.workerId} in {processingTime.TotalMilliseconds}ms");
             tcs.SetResult(result);
             LogTaskStatus($"Task {taskId} completed by {taskInfo.workerId}");
         }
         else
         {
-            Console.WriteLine($"[ERROR] Task {taskId} not found in pending results");
+           // Console.WriteLine($"[ERROR] Task {taskId} not found in pending results");
+            LogToFile($"[ERROR] Task {taskId} not found in pending results");
         }
     }
 
@@ -92,27 +115,32 @@ public class WorkerCoordinator
         if (_pendingTasks.IsEmpty && _activeTasks.IsEmpty && _pendingResults.IsEmpty)
             return;
             
-        Console.WriteLine($"\n=== Task Status at {DateTime.UtcNow:HH:mm:ss} ===");
-        Console.WriteLine($"Action: {actionMessage}");
+       // Console.WriteLine($"\n=== Task Status at {DateTime.UtcNow:HH:mm:ss} ===");
+        //Console.WriteLine($"Action: {actionMessage}");
+        LogToFile($"Task Status: {actionMessage} at {DateTime.UtcNow:HH:mm:ss}");
         
         if (!_activeTasks.IsEmpty)
         {
-            Console.WriteLine("\n[Active Tasks]");
+           // Console.WriteLine("\n[Active Tasks]");
+            LogToFile("[Active Tasks]");
             foreach (var task in _activeTasks)
             {
                 var duration = DateTime.UtcNow - task.Value.startTime;
-                Console.WriteLine($"- {task.Key} (Worker: {task.Value.workerId}, Running: {duration.TotalSeconds:F1}s)");
+               // Console.WriteLine($"- {task.Key} (Worker: {task.Value.workerId}, Running: {duration.TotalSeconds:F1}s)");
+                LogToFile($"- {task.Key} (Worker: {task.Value.workerId}, Running: {duration.TotalSeconds:F1}s)");
             }
         }
         
         if (!_pendingTasks.IsEmpty)
         {
-            Console.WriteLine($"\n[Pending Tasks: {_pendingTasks.Count}]");
+          //  Console.WriteLine($"\n[Pending Tasks: {_pendingTasks.Count}]");
+            LogToFile($"[Pending Tasks: {_pendingTasks.Count}]");
         }
         
         if (!_pendingResults.IsEmpty)
         {
             Console.WriteLine($"\n[Waiting Results: {_pendingResults.Count}]");
+            LogToFile($"[Waiting Results: {_pendingResults.Count}]");
         }
     }
 
@@ -123,13 +151,16 @@ public class WorkerCoordinator
             
         Console.WriteLine($"\n=== Workers Status ===");
         Console.WriteLine($"Active workers: {_workers.Count}");
+        LogToFile($"Workers Status: Active workers: {_workers.Count}");
         
         foreach (var worker in _workers)
         {
             var activeTask = _activeTasks.FirstOrDefault(t => t.Value.workerId == worker.Key);
             var isProcessing = !activeTask.Equals(default(KeyValuePair<string, (string, DateTime)>));
-            Console.WriteLine($"- {worker.Key} (MaxDepth: {worker.Value.MaxDepth}) " +
-                $"{(isProcessing ? $"| Processing: {activeTask.Key}" : "| Idle")}");
+            var status = $"- {worker.Key} (MaxDepth: {worker.Value.MaxDepth}) " +
+                $"{(isProcessing ? $"| Processing: {activeTask.Key}" : "| Idle")}";
+            Console.WriteLine(status);
+            LogToFile(status);
         }
     }
 
@@ -143,6 +174,7 @@ public class WorkerCoordinator
                 if (_activeTasks.TryRemove(task.Key, out _))
                 {
                     Console.WriteLine($"[CLEANUP] Removed stale task: {task.Key}");
+                    LogToFile($"[CLEANUP] Removed stale task: {task.Key}");
                 }
             }
         }

@@ -19,27 +19,23 @@ public class MinimaxClient
         _maxDepth = depth;
         _granulation = granulation;
         _evaluator = evaluator;
-        
+
         if (channel != null)
             _grpcClient = new CheckersService.CheckersServiceClient(channel);
-            
-        Console.WriteLine("GET DEPTH " + depth);
     }
 
-    public (int fromField, int toField) GetBestMove(CheckersBoard board, bool isWhiteTurn)
+    public async Task<(int fromField, int toField)> GetBestMove(CheckersBoard board, bool isWhiteTurn)
     {
         if (_grpcClient != null)
         {
-            return DistributeBestMove(board, _maxDepth, isWhiteTurn).Result;
+            return await DistributeBestMove(board, _maxDepth, isWhiteTurn);
         }
 
-        return GetBestMoveLocally(board, isWhiteTurn);
+        return await GetBestMoveLocally(board, isWhiteTurn);
     }
 
-    public int MinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
+    public async Task<int> MinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
     {
-        Console.WriteLine($"[LOCAL] MinimaxSearch: Depth={depth}");
-        
         if (depth == 0 || new MoveGeneratorClient().IsGameOver(board))
             return _evaluator.EvaluateBoard(board, isMaximizing);
 
@@ -54,6 +50,27 @@ public class MinimaxClient
 
         int bestEval = isMaximizing ? int.MinValue : int.MaxValue;
 
+        // For shallow depths, process sequentially to avoid thread overhead
+        if (depth <= 2)
+        {
+            foreach (var (from, to) in moves)
+            {
+                var simulated = board.Clone();
+                if (captures.Count > 0)
+                    new CaptureSimulatorClient().SimulateCapture(simulated, from, to);
+                else
+                    simulated.MovePiece(from, to);
+
+                int eval = await MinimaxSearch(simulated, depth - 1, !isMaximizing);
+                bestEval = isMaximizing ? Math.Max(bestEval, eval) : Math.Min(bestEval, eval);
+            }
+            
+            return bestEval;
+        }
+        
+        // For deeper searches, use parallel processing
+        var tasks = new List<Task<int>>();
+
         foreach (var (from, to) in moves)
         {
             var simulated = board.Clone();
@@ -62,7 +79,13 @@ public class MinimaxClient
             else
                 simulated.MovePiece(from, to);
 
-            int eval = MinimaxSearch(simulated, depth - 1, !isMaximizing);
+            tasks.Add(Task.Run(() => MinimaxSearch(simulated, depth - 1, !isMaximizing)));
+        }
+
+        var results = await Task.WhenAll(tasks);
+
+        foreach (var eval in results)
+        {
             bestEval = isMaximizing ? Math.Max(bestEval, eval) : Math.Min(bestEval, eval);
         }
 
@@ -71,8 +94,6 @@ public class MinimaxClient
 
     private async Task<(int fromField, int toField)> DistributeBestMove(CheckersBoard board, int depth, bool isWhiteTurn)
     {
-        Console.WriteLine($"[REMOTE] Distributing best move calculation: Depth={depth}");
-        
         var request = new BoardStateRequest
         {
             BoardState = { board.board },
@@ -94,26 +115,20 @@ public class MinimaxClient
                 var computationTime = TimeSpan.FromTicks(response.WorkerEndTicks - response.WorkerStartTicks);
                 var communicationTime = totalTime - computationTime;
                 
-                Console.WriteLine($"[PERF] Total: {totalTime.TotalMilliseconds:F1}ms, " +
-                                  $"Computation: {computationTime.TotalMilliseconds:F1}ms, " +
-                                  $"Communication: {communicationTime.TotalMilliseconds:F1}ms");
-                
                 return (response.FromField, response.ToField);
             }
             else
             {
-                Console.WriteLine("[WARNING] Remote calculation failed, falling back to local");
-                return GetBestMoveLocally(board, isWhiteTurn);
+                return await GetBestMoveLocally(board, isWhiteTurn);
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Console.WriteLine($"[ERROR] Remote calculation failed: {ex.Message}, falling back to local");
-            return GetBestMoveLocally(board, isWhiteTurn);
+            return await GetBestMoveLocally(board, isWhiteTurn);
         }
     }
 
-    private (int fromField, int toField) GetBestMoveLocally(CheckersBoard board, bool isWhiteTurn)
+    private async Task<(int fromField, int toField)> GetBestMoveLocally(CheckersBoard board, bool isWhiteTurn)
     {
         var generator = new MoveGeneratorClient();
         var captures = generator.GetMandatoryCaptures(board, isWhiteTurn);
@@ -121,26 +136,55 @@ public class MinimaxClient
             ? generator.GetCaptureMoves(captures)
             : generator.GetAllValidMoves(board, isWhiteTurn);
 
+        if (moves.Count == 0)
+            return (-1, -1);
+            
+        if (moves.Count == 1)
+            return moves[0];
+
         int bestValue = isWhiteTurn ? int.MinValue : int.MaxValue;
         (int fromField, int toField) bestMove = (-1, -1);
+        
+        // Use parallel tasks to evaluate moves concurrently
+        var tasks = new List<Task<(int from, int to, int value)>>();
 
         foreach (var (from, to) in moves)
         {
-            var simulated = board.Clone();
-            if (captures.Count > 0)
-                new CaptureSimulatorClient().SimulateCapture(simulated, from, to);
-            else
-                simulated.MovePiece(from, to);
-
-            int currentValue = MinimaxSearch(simulated, _maxDepth - 1, !isWhiteTurn);
-            if ((isWhiteTurn && currentValue > bestValue) ||
-                (!isWhiteTurn && currentValue < bestValue))
+            // Capture the variables to avoid closure issues
+            int fromField = from;
+            int toField = to;
+            
+            tasks.Add(Task.Run(async () =>
             {
-                bestValue = currentValue;
-                bestMove = (from, to);
+                var simulated = board.Clone();
+                if (captures.Count > 0)
+                    new CaptureSimulatorClient().SimulateCapture(simulated, fromField, toField);
+                else
+                    simulated.MovePiece(fromField, toField);
+
+                int currentValue = await MinimaxSearch(simulated, _maxDepth - 1, !isWhiteTurn);
+                return (fromField, toField, currentValue);
+            }));
+        }
+
+        var results = await Task.WhenAll(tasks);
+
+        // Find the best move from the parallel evaluations
+        foreach (var result in results)
+        {
+            if ((isWhiteTurn && result.value > bestValue) || (!isWhiteTurn && result.value < bestValue))
+            {
+                bestValue = result.value;
+                bestMove = (result.from, result.to);
             }
         }
 
         return bestMove;
+    }
+    
+    // Backward compatibility method that wraps the async version
+    public (int fromField, int toField) GetBestMoveSync(CheckersBoard board, bool isWhiteTurn)
+    {
+        return GetBestMove(board, isWhiteTurn).Result;
     }
 }

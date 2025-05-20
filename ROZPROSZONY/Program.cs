@@ -4,6 +4,7 @@ using GrpcServer;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace CheckersWorker
 {
@@ -29,7 +30,7 @@ namespace CheckersWorker
                 var registrationResponse = await client.RegisterWorkerAsync(new WorkerRegistration
                 {
                     WorkerId = workerId,
-                    MaxDepth = 8  // Configure as needed
+                   // MaxDepth = 4  // Configure as needed
                 });
                 
                 if (registrationResponse.Success)
@@ -66,8 +67,8 @@ namespace CheckersWorker
                     
                     Console.WriteLine($"Received task {taskRequest.TaskId}");
                     
-                    // Process the task
-                    var result = CalculateBestMove(taskRequest.Request);
+                    // Process the task using async method
+                    var result = await CalculateBestMoveAsync(taskRequest.Request);
                     
                     // Submit the result back to the server
                     await client.SubmitResultAsync(new CalculationResult
@@ -86,7 +87,7 @@ namespace CheckersWorker
             }
         }
         
-        static BestValueResponse CalculateBestMove(BoardStateRequest request)
+        static async Task<BestValueResponse> CalculateBestMoveAsync(BoardStateRequest request)
         {
             var workerStartTicks = DateTime.UtcNow.Ticks;
             
@@ -122,25 +123,43 @@ namespace CheckersWorker
                 // Create minimax instance for local calculation
                 var minimax = new MinimaxClient(request.Depth, request.Granulation, evaluator);
                 
-                // Find best move
+                // Find best move using parallel processing
                 int bestValue = request.IsWhiteTurn ? int.MinValue : int.MaxValue;
                 (int fromField, int toField) bestMove = (-1, -1);
                 
+                // Create tasks for parallel evaluation of moves
+                var tasks = new List<Task<(int from, int to, int value)>>();
+                
                 foreach (var (from, to) in moves)
                 {
-                    var simulated = board.Clone();
-                    if (captures.Count > 0)
-                        new CaptureSimulatorClient().SimulateCapture(simulated, from, to);
-                    else
-                        simulated.MovePiece(from, to);
+                    // Capture variables to avoid closure issues
+                    int fromField = from;
+                    int toField = to;
                     
-                    int currentValue = minimax.MinimaxSearch(simulated, request.Depth - 1, !request.IsWhiteTurn);
-                    
-                    if ((request.IsWhiteTurn && currentValue > bestValue) ||
-                        (!request.IsWhiteTurn && currentValue < bestValue))
+                    tasks.Add(Task.Run(async () =>
                     {
-                        bestValue = currentValue;
-                        bestMove = (from, to);
+                        var simulated = board.Clone();
+                        if (captures.Count > 0)
+                            new CaptureSimulatorClient().SimulateCapture(simulated, fromField, toField);
+                        else
+                            simulated.MovePiece(fromField, toField);
+                        
+                        int currentValue = await minimax.MinimaxSearch(simulated, request.Depth-1, !request.IsWhiteTurn);
+                        return (fromField, toField, currentValue);
+                    }));
+                }
+                
+                // Wait for all evaluations to complete
+                var results = await Task.WhenAll(tasks);
+                
+                // Find the best move from the parallel evaluations
+                foreach (var result in results)
+                {
+                    if ((request.IsWhiteTurn && result.value > bestValue) ||
+                        (!request.IsWhiteTurn && result.value < bestValue))
+                    {
+                        bestValue = result.value;
+                        bestMove = (result.from, result.to);
                     }
                 }
                 
