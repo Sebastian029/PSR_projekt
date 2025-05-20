@@ -1,6 +1,5 @@
 using System.Net.WebSockets;
 using App.Server.WebSocketHandlers;
-using GrpcService;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 namespace App.Server
@@ -32,14 +31,13 @@ namespace App.Server
             builder.Services.AddSingleton<CheckersWebSocketHandler>();
             
             builder.Services.AddGrpc();
-            builder.Services.AddSingleton<WorkerCoordinator>();
             var app = builder.Build();
 
             app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
             app.UseCors("AllowAll");
             app.UseWebSockets();
             app.UseRouting();
-            app.MapGrpcService<CheckersServiceImpl>();
+            //app.MapGrpcService<CheckersServiceImpl>();
             app.MapGet("/", () => "Checkers Game Server");
 
             app.Map("/ws", async context =>

@@ -1,5 +1,5 @@
 ﻿using Grpc.Net.Client;
-using GrpcServer;
+using System.Collections.Generic;
 
 namespace App.Server;
 
@@ -14,19 +14,27 @@ public partial class CheckersGame
     private int _granulation;
     private bool _isPerformanceTest;
     private bool _isPlayerMode;
-    private CheckersService.CheckersServiceClient _client;
+    private List<string> _serverAddresses;
 
     public bool IsPlayerMode => _isPlayerMode;
     public bool IsWhiteTurn => isWhiteTurn;
     public int? MustCaptureFrom => mustCaptureFrom;
 
+    // public CheckersGame()
+    // {
+    //     board = new CheckersBoard();
+    //     isWhiteTurn = true;
+    //     _serverAddresses = new List<string>();
+    //     checkersAi = new CheckersAI(depth: 5, granulation: 1, isPerformanceTest: false, serverAddresses: _serverAddresses);
+    // }
     public CheckersGame()
     {
         board = new CheckersBoard();
         isWhiteTurn = true;
-        var channel = GrpcChannel.ForAddress("http://localhost:5000");
-        _client = new CheckersService.CheckersServiceClient(channel);
-        checkersAi = new CheckersAI(_depth= 5, granulation: 1, isPerformanceTest: false, grpcChannel: channel);
+        _serverAddresses = new List<string>();
+        _serverAddresses.Add("https://localhost:5001");
+        Console.WriteLine($"Using server address for distributed calculation: {_serverAddresses[0]}");
+        checkersAi = new CheckersAI(depth: 5, granulation: 1, isPerformanceTest: false, serverAddresses: _serverAddresses);
     }
 
     public void SetDifficulty(int depth, int granulation, bool isPerformanceTest, bool isPlayerMode)
@@ -36,8 +44,26 @@ public partial class CheckersGame
         _isPerformanceTest = isPerformanceTest;
         _isPlayerMode = isPlayerMode;
         Console.WriteLine($"Game settings: Depth={depth}, Granulation={granulation}, PerfTest={isPerformanceTest}, PlayerMode={isPlayerMode}");
-        checkersAi.updateSettings(depth, granulation, isPerformanceTest);
+        checkersAi.updateSettings(depth, granulation);
     }
+
+    public void SetServerAddresses(List<string> serverAddresses)
+    {
+        _serverAddresses = serverAddresses ?? new List<string>();
+        Console.WriteLine($"Setting {_serverAddresses.Count} server addresses for distributed calculation");
+        checkersAi.updateSettings(_depth, _granulation, _serverAddresses);
+    }
+    
+    public void AddServerAddress(string address)
+    {
+        if (!string.IsNullOrEmpty(address) && !_serverAddresses.Contains(address))
+        {
+            _serverAddresses.Add(address);
+            Console.WriteLine($"Added server address: {address}. Total servers: {_serverAddresses.Count}");
+            checkersAi.updateSettings(_depth, _granulation, _serverAddresses);
+        }
+    }
+
     public int Depth
     {
         get { return _depth; }
@@ -53,4 +79,8 @@ public partial class CheckersGame
         get { return _isPerformanceTest; }
     }
     
+    public List<string> ServerAddresses
+    {
+        get { return new List<string>(_serverAddresses); }
+    }
 }
