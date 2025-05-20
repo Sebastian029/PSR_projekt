@@ -13,12 +13,12 @@ public class CheckersAI
     {
         evaluator = new Evaluator();
         _channel = grpcChannel;
-        _minimax = new Minimax(depth, granulation, evaluator, grpcChannel);
+        //_minimax = new Minimax(depth, granulation, evaluator, grpcChannel);
+        _minimax = new Minimax(depth, evaluator);
         _moveGenerator = new MoveGenerator();
         _captureSimulator = new CaptureSimulator();
     }
-
-    // Rest of the class remains the same
+    
     public (int fromField, int toField) CalculateOptimalMove(CheckersBoard board, bool isWhiteTurn)
     {
         var captures = _moveGenerator.GetMandatoryCaptures(board, isWhiteTurn);
@@ -39,7 +39,9 @@ public class CheckersAI
 
     public void updateSettings(int depth, int granulation, bool performanceTest)
     {
-        _minimax = new Minimax(depth, granulation, evaluator, _channel);
+        //_minimax = new Minimax(depth, granulation, evaluator, _channel);
+        _minimax = new Minimax(depth, evaluator);
+
 
     }
 }
