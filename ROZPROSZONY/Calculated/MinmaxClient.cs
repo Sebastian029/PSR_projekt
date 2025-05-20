@@ -20,7 +20,7 @@ public class MinimaxClient
    
     public int MinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
     {
-        //if(depth >= 5)
+        if(depth >= 3)
             Console.WriteLine($"[REMOTE] MinimaxSearch: Depth={depth}");
 
         if (depth == 0 || new MoveGenerator().IsGameOver(board))

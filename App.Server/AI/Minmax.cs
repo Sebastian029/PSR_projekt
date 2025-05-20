@@ -107,6 +107,7 @@ public class Minimax
 
     private int MinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
     {
+        Console.WriteLine("SERVER DEPTH: " +depth);
         if (depth == 0 || new MoveGenerator().IsGameOver(board))
             return _evaluator.EvaluateBoard(board, isMaximizing);
 
@@ -133,11 +134,9 @@ public class Minimax
 
         return bestEval;
     }
-
     private async Task<int> DistributeCalculation(CheckersBoard board, int depth, bool isMaximizing)
     {
         Console.WriteLine($"[REMOTE] Distributing calculation: Depth={depth}");
-        
         var request = new BoardStateRequest
         {
             BoardState = { board.board },
@@ -145,23 +144,28 @@ public class Minimax
             Depth = depth,
             ClientStartTicks = DateTime.UtcNow.Ticks
         };
-
+    
         try
         {
             var startTime = DateTime.UtcNow;
             var response = await _grpcClient.GetBestValueAsync(request);
             var endTime = DateTime.UtcNow;
-
+        
             if (response.Success)
             {
                 var totalTime = endTime - startTime;
                 var computationTime = TimeSpan.FromTicks(response.WorkerEndTicks - response.WorkerStartTicks);
                 var communicationTime = totalTime - computationTime;
-
+            
                 // Log performance metrics
-                PerformanceLogger.LogTiming(totalTime, computationTime, communicationTime,
-                                          depth, _granulationDepth, response.Success);
-
+                GameMetricsLogger.LogTiming(
+                    totalTime, 
+                    computationTime, 
+                    communicationTime,
+                    depth, 
+                    _granulationDepth, 
+                    response.Success);
+                
                 return response.Value;
             }
             else
@@ -176,4 +180,6 @@ public class Minimax
             return MinimaxSearch(board, depth, isMaximizing);
         }
     }
+
+
 }

@@ -175,23 +175,29 @@ namespace App.Server.WebSocketHandlers
 
         private async Task StartComputerVsComputerGame(WebSocket webSocket)
         {
+            // Reset metrics at the start of each game
+            GameMetricsLogger.ResetMetrics();
+    
             var timer = new GameTimer();
             timer.Start();
-            
+    
             while (!_game.CheckGameOver())
             {
                 await ProcessComputerTurn(webSocket);
                 if(!_game.IsPerformanceTest)
                     await Task.Delay(300);
             }
+    
             timer.Stop();
             await SendGameState(webSocket);
+    
             if (_game.IsPerformanceTest)
             {
                 // Get workers count from WorkerCoordinator
                 int workersCount = _workerCoordinator.getWorkersNumber();
         
-                GameLogger.LogGame(
+                // Log the completed game with all metrics
+                GameMetricsLogger.LogGame(
                     _game.Depth,
                     _game.Granulation,
                     workersCount,
@@ -199,6 +205,8 @@ namespace App.Server.WebSocketHandlers
                 );
             }
         }
+
+
         
         private async Task HandleReset(WebSocket webSocket)
         {
