@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option csharp_namespace = "App.Grpc";
+
+package checkers;
+
+service CheckersEvaluationService {
+  rpc MinimaxSearch (MinimaxRequest) returns (MinimaxResponse);
+}
+
+message MinimaxRequest {
+  repeated uint32 board = 1;
+  int32 depth = 2;
+  bool isMaximizing = 3;
+}
+
+message MinimaxResponse {
+  int32 score = 1;
+}
