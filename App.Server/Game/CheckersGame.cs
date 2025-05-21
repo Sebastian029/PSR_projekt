@@ -33,6 +33,9 @@ public partial class CheckersGame
         isWhiteTurn = true;
         _serverAddresses = new List<string>();
         _serverAddresses.Add("https://localhost:5001");
+        _serverAddresses.Add("https://localhost:5002");
+        _serverAddresses.Add("https://localhost:5003");
+        _serverAddresses.Add("https://localhost:5004");
         Console.WriteLine($"Using server address for distributed calculation: {_serverAddresses[0]}");
         checkersAi = new CheckersAI(depth: 5, granulation: 1, isPerformanceTest: false, serverAddresses: _serverAddresses);
     }

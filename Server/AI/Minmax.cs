@@ -9,7 +9,7 @@ public class Minimax
     private readonly int _maxDepth;
     private readonly IBoardEvaluator _evaluator;
 
-    public Minimax(int depth,IBoardEvaluator evaluator, object distributor = null)
+    public Minimax(int depth,IBoardEvaluator evaluator)
     {
         _maxDepth = depth;
         _evaluator = evaluator;

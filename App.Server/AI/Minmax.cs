@@ -1,4 +1,5 @@
 ﻿using App.Server;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using App.Client;
@@ -10,7 +11,7 @@ public class Minimax
     private readonly MinimaxDistributor _distributor;
     private readonly int _granulationDepth;
 
-    public Minimax(int depth,int granulationDepth, IBoardEvaluator evaluator, MinimaxDistributor distributor = null)
+    public Minimax(int depth, int granulationDepth, IBoardEvaluator evaluator, MinimaxDistributor distributor = null)
     {
         _maxDepth = depth;
         _evaluator = evaluator;
@@ -51,15 +52,15 @@ public class Minimax
         if (depth == 0 || new MoveGenerator().IsGameOver(board))
             return _evaluator.EvaluateBoard(board, isMaximizing);
 
-        // If we should distribute and a distributor is available
-        if (_distributor != null && depth > granulationDepth)
+        // If we've reached the granulation depth and have a distributor, handle all subtrees in parallel
+        if (_distributor != null && depth == _maxDepth - granulationDepth)
         {
-            Console.WriteLine($"GAME: Depth={depth}, Granulation={granulationDepth}");
-            // Delegate the calculation to the distributor
+            Console.WriteLine($"GAME: Distributing at Depth={depth}, Granulation={granulationDepth}");
+            // At this level, we'll collect all possible moves and distribute them all at once
             return _distributor.DistributeMinimaxSearch(board, depth, isMaximizing);
         }
 
-        // Otherwise, calculate locally
+        // Standard minimax logic for depths above granulation or when no distributor is available
         MoveGenerator generator = new MoveGenerator();
         var captures = generator.GetMandatoryCaptures(board, isMaximizing);
         var moves = captures.Count > 0
@@ -83,4 +84,5 @@ public class Minimax
 
         return bestEval;
     }
+
 }
