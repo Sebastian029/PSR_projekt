@@ -15,36 +15,11 @@ public class Minimax
         _evaluator = evaluator;
     }
     
-    public (int fromField, int toField) GetBestMove(CheckersBoard board, List<(int from, int to)> moves, bool isWhiteTurn)
-    {
-        int bestScore = isWhiteTurn ? int.MinValue : int.MaxValue;
-        (int from, int to) bestMove = (-1, -1);
-        
-        foreach (var move in moves)
-        {
-            var simulated = board.Clone();
-            simulated.MovePiece(move.from, move.to);
-            
-            int score = MinimaxSearch(simulated, _maxDepth - 1, !isWhiteTurn);
-            
-            if ((isWhiteTurn && score > bestScore) || (!isWhiteTurn && score < bestScore))
-            {
-                bestScore = score;
-                bestMove = move;
-            }
-        }
-        
-        return bestMove;
-    }
-    
-    public (int fromField, int toField) GetBestMove(CheckersBoard board, Dictionary<int, List<int>> captures, bool isWhiteTurn)
-    {
-        var moves = captures.SelectMany(kvp => kvp.Value.Select(to => (kvp.Key, to))).ToList();
-        return GetBestMove(board, moves, isWhiteTurn);
-    }
     
     public int MinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
     {
+        Console.WriteLine("Depth:" + depth);
+        
         if (depth == 0 || new MoveGenerator().IsGameOver(board))
             return _evaluator.EvaluateBoard(board, isMaximizing);
             

@@ -42,10 +42,12 @@ namespace App.Client
             request.Board.Add(board.board[1]);
             request.Board.Add(board.board[2]);
             // Send the request and get the response
+            stopwatch.Stop();
+            Console.WriteLine($"Sending data time: {stopwatch.ElapsedMilliseconds} ms for server {serverAddress}");
+            stopwatch = System.Diagnostics.Stopwatch.StartNew();
             var response = client.MinimaxSearch(request);
             stopwatch.Stop();
-
-            Console.WriteLine($"SendBoardForEvaluation execution time: {stopwatch.ElapsedMilliseconds} ms for server {serverAddress}");
+            Console.WriteLine($"Waiting for response time: {stopwatch.ElapsedMilliseconds} ms for server {serverAddress}");
             return response.Score;
         }
 
