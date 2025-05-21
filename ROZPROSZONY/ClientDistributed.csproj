@@ -21,8 +21,14 @@
  </ItemGroup>
 
 <ItemGroup>
-	<Protobuf Include="Protos\*.proto" GrpcServices="Client" />
+	<Protobuf Include="Protos\*.proto" GrpcServices="Server" />
 	<Folder Include="Protos\" />
+</ItemGroup>
+
+<ItemGroup>
+  <PackageReference Include="Grpc.AspNetCore" Version="2.59.0" />
+  <PackageReference Include="Google.Protobuf" Version="3.25.1" />
+  <PackageReference Include="Grpc.Tools" Version="2.59.0" />
 </ItemGroup>
 
 </Project>
