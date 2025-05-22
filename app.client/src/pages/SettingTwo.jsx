@@ -5,8 +5,8 @@ import { useNavigate } from "react-router-dom"
 
 const SettingTwo = () => {
     const navigate = useNavigate()
-    const [selected, setSelected] = useState("")
-    const [selected2, setSelected2] = useState("")
+    const [selected, setSelected] = useState(5)
+    const [selected2, setSelected2] = useState(1)
     const [performanceTest, setPerformanceTest] = useState(false)
     const [error, setError] = useState("")
 
