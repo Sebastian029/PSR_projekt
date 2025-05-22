@@ -20,8 +20,6 @@ namespace App.Client
 
         public int DistributeMinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
         {
-            // Send the entire board state to the server and let it handle move generation
-            // and evaluation of all subtrees in parallel
             return SendBoardForEvaluation(board, depth, isMaximizing);
         }
 
@@ -36,7 +34,6 @@ namespace App.Client
                 Depth = depth,
                 IsMaximizing = isMaximizing,
                 RequestTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now)
-
             };
     
             // Add the board state to the request

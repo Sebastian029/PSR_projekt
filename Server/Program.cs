@@ -32,7 +32,7 @@ public class Program
 
     private static async Task StartServer(int port)
     {
-        var builder = WebApplication.CreateBuilder(new[] { $"--urls=https://127.0.0.1:{port}" });
+        var builder = WebApplication.CreateBuilder(new[] { $"--urls=http://127.0.0.1:{port}" });
 
         // Configure Kestrel for this specific instance
         builder.WebHost.ConfigureKestrel(options =>
@@ -40,8 +40,9 @@ public class Program
             options.Listen(IPAddress.Parse("127.0.0.1"), port, listenOptions =>
             {
                 listenOptions.Protocols = HttpProtocols.Http2;
-                listenOptions.UseHttps(); // Use HTTPS for secure communication
+               // listenOptions.UseHttps(); // Use HTTPS for secure communication
             });
+
         });
 
         // Add services to the container

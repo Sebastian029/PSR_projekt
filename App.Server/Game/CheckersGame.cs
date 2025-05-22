@@ -32,7 +32,7 @@ public partial class CheckersGame
         board = new CheckersBoard();
         isWhiteTurn = true;
         _serverAddresses = new List<string>();
-        _serverAddresses.Add("https://localhost:5001");
+        _serverAddresses.Add("http://localhost:5001");
         // _serverAddresses.Add("https://localhost:5002");
         // _serverAddresses.Add("https://localhost:5003");
         // _serverAddresses.Add("https://localhost:5004");
