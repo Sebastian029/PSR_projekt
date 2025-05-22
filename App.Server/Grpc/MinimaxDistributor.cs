@@ -11,11 +11,17 @@ namespace App.Client
     public class MinimaxDistributor
     {
         private readonly List<string> _serverAddresses;
+        private readonly Dictionary<string, GrpcChannel> _channels;
         private int _currentServerIndex = 0;
 
         public MinimaxDistributor(List<string> serverAddresses)
         {
             _serverAddresses = serverAddresses;
+            _channels = new Dictionary<string, GrpcChannel>();
+            foreach (var address in _serverAddresses)
+            {
+                _channels[address] = GrpcChannel.ForAddress(address);
+            }
         }
 
         public int DistributeMinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
@@ -26,27 +32,23 @@ namespace App.Client
         private int SendBoardForEvaluation(CheckersBoard board, int depth, bool isMaximizing)
         {
             string serverAddress = GetNextServerAddress();
-            using var channel = GrpcChannel.ForAddress(serverAddress);
+            var channel = _channels[serverAddress];
             var client = new CheckersEvaluationService.CheckersEvaluationServiceClient(channel);
-    
+
             var request = new MinimaxRequest
             {
                 Depth = depth,
                 IsMaximizing = isMaximizing,
                 RequestTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now)
             };
-    
-            // Add the board state to the request
             request.Board.Add(board.board[0]);
             request.Board.Add(board.board[1]);
             request.Board.Add(board.board[2]);
-            
+
             var response = client.MinimaxSearch(request);
             var currentTime = DateTimeOffset.Now;
             var responseTime = response.ResponseTime.ToDateTimeOffset();
-            
             Console.WriteLine($"Response time: {(currentTime - responseTime).TotalMilliseconds} ms");
-            
             return response.Score;
         }
 
