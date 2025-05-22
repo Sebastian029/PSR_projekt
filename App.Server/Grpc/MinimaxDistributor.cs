@@ -4,6 +4,7 @@ using Grpc.Net.Client;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Google.Protobuf.WellKnownTypes;
 
 namespace App.Client
 {
@@ -26,7 +27,6 @@ namespace App.Client
 
         private int SendBoardForEvaluation(CheckersBoard board, int depth, bool isMaximizing)
         {
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
             string serverAddress = GetNextServerAddress();
             using var channel = GrpcChannel.ForAddress(serverAddress);
             var client = new CheckersEvaluationService.CheckersEvaluationServiceClient(channel);
@@ -34,20 +34,22 @@ namespace App.Client
             var request = new MinimaxRequest
             {
                 Depth = depth,
-                IsMaximizing = isMaximizing
+                IsMaximizing = isMaximizing,
+                RequestTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now)
+
             };
     
             // Add the board state to the request
             request.Board.Add(board.board[0]);
             request.Board.Add(board.board[1]);
             request.Board.Add(board.board[2]);
-            // Send the request and get the response
-            stopwatch.Stop();
-            Console.WriteLine($"Sending data time: {stopwatch.ElapsedMilliseconds} ms for server {serverAddress}");
-            stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            
             var response = client.MinimaxSearch(request);
-            stopwatch.Stop();
-            Console.WriteLine($"Waiting for response time: {stopwatch.ElapsedMilliseconds} ms for server {serverAddress}");
+            var currentTime = DateTimeOffset.Now;
+            var responseTime = response.ResponseTime.ToDateTimeOffset();
+            
+            Console.WriteLine($"Response time: {(currentTime - responseTime).TotalMilliseconds} ms");
+            
             return response.Score;
         }
 

@@ -18,7 +18,7 @@ public class Minimax
     
     public int MinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
     {
-        Console.WriteLine("Depth:" + depth);
+        //Console.WriteLine("Depth:" + depth);
         
         if (depth == 0 || new MoveGenerator().IsGameOver(board))
             return _evaluator.EvaluateBoard(board, isMaximizing);
