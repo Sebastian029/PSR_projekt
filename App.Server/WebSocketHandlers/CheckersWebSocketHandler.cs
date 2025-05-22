@@ -1,4 +1,5 @@
-﻿using System.Net.WebSockets;
+﻿using System.Diagnostics;
+using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 
@@ -171,12 +172,16 @@ namespace App.Server.WebSocketHandlers
         private async Task StartComputerVsComputerGame(WebSocket webSocket)
         {
 
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+            
             while (!_game.CheckGameOver())
             {
                 await ProcessComputerTurn(webSocket);
                 if(!_game.IsPerformanceTest)
                     await Task.Delay(300);            }
-
+            stopwatch.Stop();
+            GameLogger.LogGame(_game.Depth, _game.Granulation, stopwatch.ElapsedMilliseconds);
            
 
             await SendGameState(webSocket);

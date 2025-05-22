@@ -16,8 +16,8 @@ public class Program
     public static async Task Main(string[] args)
     {
         // Define the ports for the three server instances
-        int[] ports = { 5001};
-       // int[] ports = { 5001, 5002, 5003, 5004 };
+        //int[] ports = { 5001};
+        int[] ports = { 5001, 5002};
         List<Task> serverTasks = new List<Task>();
 
         foreach (int port in ports)

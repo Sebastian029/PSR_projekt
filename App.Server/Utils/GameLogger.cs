@@ -18,7 +18,7 @@ public static class GameLogger
     {
         var line = string.Format(CultureInfo.InvariantCulture,
             "{0};{1};{2:F2}\n",
-            depth, granulation, gameTimeSeconds);
+            depth, granulation, gameTimeSeconds/1000);
 
         File.AppendAllText(LogFilePath, line);
     }
