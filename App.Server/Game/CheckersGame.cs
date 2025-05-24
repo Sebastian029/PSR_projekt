@@ -40,7 +40,7 @@ public partial class CheckersGame
         _serverAddresses = new List<string>();
     
         // Wyłącz serwery dla testów lokalnych
-        // _serverAddresses.Add("http://localhost:5001");
+        _serverAddresses.Add("http://localhost:5001");
         // _serverAddresses.Add("http://localhost:5002");
     
         Console.WriteLine("Using LOCAL calculation only (no distributed servers)");

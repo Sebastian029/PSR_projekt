@@ -27,7 +27,7 @@ public class MoveGenerator : IMoveGenerator
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error getting valid moves for piece at ({row},{col}): {ex.Message}");
+                       // Console.WriteLine($"Error getting valid moves for piece at ({row},{col}): {ex.Message}");
                     }
                 }
             }
@@ -106,7 +106,7 @@ public class MoveGenerator : IMoveGenerator
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Error checking moves for piece at ({row},{col}): {ex.Message}");
+                            //Console.WriteLine($"Error checking moves for piece at ({row},{col}): {ex.Message}");
                         }
                     }
                 }
@@ -114,7 +114,7 @@ public class MoveGenerator : IMoveGenerator
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error in HasValidMoves: {ex.Message}");
+            //Console.WriteLine($"Error in HasValidMoves: {ex.Message}");
         }
 
         return false;

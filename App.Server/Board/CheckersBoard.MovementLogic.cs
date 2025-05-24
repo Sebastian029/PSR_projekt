@@ -15,14 +15,14 @@ public void MovePiece(int fromRow, int fromCol, int toRow, int toCol)
     if (fromRow < 0 || fromRow >= 8 || fromCol < 0 || fromCol >= 8 ||
         toRow < 0 || toRow >= 8 || toCol < 0 || toCol >= 8)
     {
-        Console.WriteLine($"MovePiece: Invalid coordinates from ({fromRow},{fromCol}) to ({toRow},{toCol})");
+        //Console.WriteLine($"MovePiece: Invalid coordinates from ({fromRow},{fromCol}) to ({toRow},{toCol})");
         return;
     }
 
     PieceType piece = GetPiece(fromRow, fromCol);
     if (piece == PieceType.Empty)
     {
-        Console.WriteLine($"MovePiece: No piece at ({fromRow},{fromCol})");
+       // Console.WriteLine($"MovePiece: No piece at ({fromRow},{fromCol})");
         return;
     }
 
@@ -30,7 +30,7 @@ public void MovePiece(int fromRow, int fromCol, int toRow, int toCol)
     PieceType targetPiece = GetPiece(toRow, toCol);
     if (targetPiece == PieceType.WhiteKing || targetPiece == PieceType.BlackKing)
     {
-        Console.WriteLine($"MovePiece: Target position ({toRow},{toCol}) already has a king, skipping move");
+       // Console.WriteLine($"MovePiece: Target position ({toRow},{toCol}) already has a king, skipping move");
         return;
     }
 
@@ -60,7 +60,7 @@ public void MovePiece(int fromRow, int fromCol, int toRow, int toCol)
                 if (middlePiece != PieceType.Empty)
                 {
                     SetPiece(middleRow, middleCol, PieceType.Empty);
-                    Console.WriteLine($"Captured piece at ({middleRow},{middleCol})");
+                    //Console.WriteLine($"Captured piece at ({middleRow},{middleCol})");
                 }
             }
         }

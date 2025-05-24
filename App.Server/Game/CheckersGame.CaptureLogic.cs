@@ -10,10 +10,10 @@ namespace App.Server
         
         private bool ExecuteCapture(int fromRow, int fromCol, int toRow, int toCol)
 {
-    Console.WriteLine($"ExecuteCapture: Attempting capture from ({fromRow},{fromCol}) to ({toRow},{toCol})");
+    //Console.WriteLine($"ExecuteCapture: Attempting capture from ({fromRow},{fromCol}) to ({toRow},{toCol})");
     
     PieceType piece = board.GetPiece(fromRow, fromCol);
-    Console.WriteLine($"ExecuteCapture: Piece type is {piece}");
+    //Console.WriteLine($"ExecuteCapture: Piece type is {piece}");
     
     // Sprawdź czy to wielokrotne bicie z GetMultipleCaptures
     var multipleCaptures = board.GetMultipleCaptures(fromRow, fromCol);
@@ -21,13 +21,13 @@ namespace App.Server
     {
         if (sequence.Count > 0 && sequence.Last() == (toRow, toCol))
         {
-            Console.WriteLine($"ExecuteCapture: Found in multiple captures sequence: {string.Join(" → ", sequence.Select(s => $"({s.row},{s.col})"))}");
+            //Console.WriteLine($"ExecuteCapture: Found in multiple captures sequence: {string.Join(" → ", sequence.Select(s => $"({s.row},{s.col})"))}");
             
             // POPRAWKA: Wykonaj tylko pierwszy krok sekwencji
             if (sequence.Count > 0)
             {
                 var firstStep = sequence[0];
-                Console.WriteLine($"ExecuteCapture: Executing first step to ({firstStep.row},{firstStep.col})");
+                //Console.WriteLine($"ExecuteCapture: Executing first step to ({firstStep.row},{firstStep.col})");
                 
                 // Sprawdź czy pierwszy krok to pojedyncze bicie
                 var validCaptures = board.GetValidCaptures(fromRow, fromCol);
@@ -40,7 +40,7 @@ namespace App.Server
                     board.SetPiece(targetCapture.capturedRow, targetCapture.capturedCol, PieceType.Empty);
                     board.SetPiece(firstStep.row, firstStep.col, piece);
                     
-                    Console.WriteLine($"ExecuteCapture: Captured piece at ({targetCapture.capturedRow},{targetCapture.capturedCol})");
+                   // Console.WriteLine($"ExecuteCapture: Captured piece at ({targetCapture.capturedRow},{targetCapture.capturedCol})");
                     
                     // Sprawdź promocję
                     if (CheckAndPromotePiece(piece, firstStep.row, firstStep.col))
@@ -54,7 +54,7 @@ namespace App.Server
                     // Ustaw wymagane dalsze bicie
                     mustCaptureFrom = (firstStep.row, firstStep.col);
                     captureSequence.Add((firstStep.row, firstStep.col));
-                    Console.WriteLine($"ExecuteCapture: Must continue capturing from ({firstStep.row},{firstStep.col})");
+                    //Console.WriteLine($"ExecuteCapture: Must continue capturing from ({firstStep.row},{firstStep.col})");
                     return true;
                 }
             }
@@ -67,7 +67,7 @@ namespace App.Server
     
     if (rowDiff > 2 && colDiff > 2 && rowDiff == colDiff)
     {
-        Console.WriteLine($"ExecuteCapture: Direct multiple capture detected - {rowDiff} squares");
+       // Console.WriteLine($"ExecuteCapture: Direct multiple capture detected - {rowDiff} squares");
         return ExecuteMultipleCapture(fromRow, fromCol, toRow, toCol);
     }
     
@@ -77,16 +77,16 @@ namespace App.Server
     
     if (targetSingleCapture == default) 
     {
-        Console.WriteLine($"ExecuteCapture: No valid single capture from ({fromRow},{fromCol}) to ({toRow},{toCol})");
-        Console.WriteLine("Available single captures:");
+        //Console.WriteLine($"ExecuteCapture: No valid single capture from ({fromRow},{fromCol}) to ({toRow},{toCol})");
+       //Console.WriteLine("Available single captures:");
         foreach (var capture in validSingleCaptures)
         {
-            Console.WriteLine($"  ({capture.toRow}, {capture.toCol}) capturing ({capture.capturedRow}, {capture.capturedCol})");
+            //Console.WriteLine($"  ({capture.toRow}, {capture.toCol}) capturing ({capture.capturedRow}, {capture.capturedCol})");
         }
         return false;
     }
 
-    Console.WriteLine($"ExecuteCapture: Single capture - capturing piece at ({targetSingleCapture.capturedRow},{targetSingleCapture.capturedCol})");
+   // Console.WriteLine($"ExecuteCapture: Single capture - capturing piece at ({targetSingleCapture.capturedRow},{targetSingleCapture.capturedCol})");
 
     // Wykonaj pojedyncze bicie
     board.SetPiece(fromRow, fromCol, PieceType.Empty);
@@ -108,7 +108,7 @@ namespace App.Server
     {
         mustCaptureFrom = (toRow, toCol);
         captureSequence.Add((toRow, toCol));
-        Console.WriteLine($"Further captures available from ({toRow},{toCol})");
+        //Console.WriteLine($"Further captures available from ({toRow},{toCol})");
         return true;
     }
 
@@ -116,7 +116,7 @@ namespace App.Server
     mustCaptureFrom = null;
     captureSequence.Clear();
     isWhiteTurn = !isWhiteTurn;
-    Console.WriteLine("Capture sequence completed");
+    //Console.WriteLine("Capture sequence completed");
     return true;
 }
 
@@ -125,21 +125,21 @@ namespace App.Server
         // Nowa metoda dla wielokrotnych bić
         private bool ExecuteMultipleCapture(int fromRow, int fromCol, int toRow, int toCol)
         {
-            Console.WriteLine($"ExecuteMultipleCapture: From ({fromRow},{fromCol}) to ({toRow},{toCol})");
+            //Console.WriteLine($"ExecuteMultipleCapture: From ({fromRow},{fromCol}) to ({toRow},{toCol})");
             
             PieceType piece = board.GetPiece(fromRow, fromCol);
             
             // Sprawdź czy to wielokrotne bicie przez pionka (sekwencja skoków po 2 pola)
             if (piece == PieceType.WhitePawn || piece == PieceType.BlackPawn)
             {
-                Console.WriteLine("ExecuteMultipleCapture: Pawn multiple capture - executing as sequence");
+                //Console.WriteLine("ExecuteMultipleCapture: Pawn multiple capture - executing as sequence");
                 return ExecutePawnMultipleCapture(fromRow, fromCol, toRow, toCol);
             }
             
             // Dla damek - długie bicie w jednym ruchu
             if (piece != PieceType.WhiteKing && piece != PieceType.BlackKing)
             {
-                Console.WriteLine("ExecuteMultipleCapture: Invalid piece type for multiple capture");
+                //Console.WriteLine("ExecuteMultipleCapture: Invalid piece type for multiple capture");
                 return false;
             }
             
@@ -150,7 +150,7 @@ namespace App.Server
         // Metoda dla wielokrotnych bić pionków
 private bool ExecutePawnMultipleCapture(int fromRow, int fromCol, int toRow, int toCol)
 {
-    Console.WriteLine($"ExecutePawnMultipleCapture: Pawn from ({fromRow},{fromCol}) to ({toRow},{toCol})");
+    //Console.WriteLine($"ExecutePawnMultipleCapture: Pawn from ({fromRow},{fromCol}) to ({toRow},{toCol})");
     
     PieceType piece = board.GetPiece(fromRow, fromCol);
     
@@ -160,11 +160,11 @@ private bool ExecutePawnMultipleCapture(int fromRow, int fromCol, int toRow, int
     
     if (pawnCaptureSequence.Count == 0)
     {
-        Console.WriteLine("ExecutePawnMultipleCapture: No valid capture sequence found");
+        //Console.WriteLine("ExecutePawnMultipleCapture: No valid capture sequence found");
         return false;
     }
     
-    Console.WriteLine($"ExecutePawnMultipleCapture: Found sequence with {pawnCaptureSequence.Count} captures");
+   // Console.WriteLine($"ExecutePawnMultipleCapture: Found sequence with {pawnCaptureSequence.Count} captures");
     
     // Wykonaj sekwencję bić
     int currentRow = fromRow;
@@ -173,12 +173,12 @@ private bool ExecutePawnMultipleCapture(int fromRow, int fromCol, int toRow, int
     
     foreach (var (stepFromR, stepFromC, stepToR, stepToC, capturedR, capturedC) in pawnCaptureSequence)
     {
-        Console.WriteLine($"ExecutePawnMultipleCapture: Step from ({stepFromR},{stepFromC}) to ({stepToR},{stepToC}) capturing ({capturedR},{capturedC})");
+        //Console.WriteLine($"ExecutePawnMultipleCapture: Step from ({stepFromR},{stepFromC}) to ({stepToR},{stepToC}) capturing ({capturedR},{capturedC})");
         
         // Sprawdź czy krok jest prawidłowy
         if (stepFromR != currentRow || stepFromC != currentCol)
         {
-            Console.WriteLine($"ExecutePawnMultipleCapture: Invalid step sequence at ({stepFromR},{stepFromC})");
+           // Console.WriteLine($"ExecutePawnMultipleCapture: Invalid step sequence at ({stepFromR},{stepFromC})");
             return false;
         }
         
@@ -187,20 +187,20 @@ private bool ExecutePawnMultipleCapture(int fromRow, int fromCol, int toRow, int
         board.SetPiece(capturedR, capturedC, PieceType.Empty);
         board.SetPiece(stepToR, stepToC, currentPiece);
         
-        Console.WriteLine($"ExecutePawnMultipleCapture: Captured piece at ({capturedR},{capturedC})");
+        //Console.WriteLine($"ExecutePawnMultipleCapture: Captured piece at ({capturedR},{capturedC})");
         
         // Sprawdź promocję po każdym kroku
         if (currentPiece == PieceType.WhitePawn && stepToR == 0)
         {
             board.SetPiece(stepToR, stepToC, PieceType.WhiteKing);
             currentPiece = PieceType.WhiteKing;
-            Console.WriteLine($"White pawn promoted to king at ({stepToR},{stepToC}) during multiple capture");
+          //  Console.WriteLine($"White pawn promoted to king at ({stepToR},{stepToC}) during multiple capture");
         }
         else if (currentPiece == PieceType.BlackPawn && stepToR == 7)
         {
             board.SetPiece(stepToR, stepToC, PieceType.BlackKing);
             currentPiece = PieceType.BlackKing;
-            Console.WriteLine($"Black pawn promoted to king at ({stepToR},{stepToC}) during multiple capture");
+           // Console.WriteLine($"Black pawn promoted to king at ({stepToR},{stepToC}) during multiple capture");
         }
         
         currentRow = stepToR;
@@ -214,7 +214,7 @@ private bool ExecutePawnMultipleCapture(int fromRow, int fromCol, int toRow, int
         mustCaptureFrom = (currentRow, currentCol);
         // POPRAWKA: Używaj pola klasy captureSequence (typu List<(int row, int col)>)
         captureSequence.Add((currentRow, currentCol));
-        Console.WriteLine($"ExecutePawnMultipleCapture: Further captures available from ({currentRow},{currentCol})");
+       // Console.WriteLine($"ExecutePawnMultipleCapture: Further captures available from ({currentRow},{currentCol})");
         return true;
     }
     
@@ -222,7 +222,7 @@ private bool ExecutePawnMultipleCapture(int fromRow, int fromCol, int toRow, int
     mustCaptureFrom = null;
     captureSequence.Clear();
     isWhiteTurn = !isWhiteTurn;
-    Console.WriteLine("ExecutePawnMultipleCapture: Sequence completed");
+   // Console.WriteLine("ExecutePawnMultipleCapture: Sequence completed");
     return true;
 }
 
@@ -293,7 +293,7 @@ private bool ExecutePawnMultipleCapture(int fromRow, int fromCol, int toRow, int
                 
                 if (!foundCapture)
                 {
-                    Console.WriteLine($"FindPawnCaptureSequence: No valid capture found from ({currentRow},{currentCol})");
+                  //  Console.WriteLine($"FindPawnCaptureSequence: No valid capture found from ({currentRow},{currentCol})");
                     return new List<(int, int, int, int, int, int)>(); // Zwróć pustą listę
                 }
             }
@@ -304,7 +304,7 @@ private bool ExecutePawnMultipleCapture(int fromRow, int fromCol, int toRow, int
         // Metoda dla wielokrotnych bić damek
 private bool ExecuteKingMultipleCapture(int fromRow, int fromCol, int toRow, int toCol)
 {
-    Console.WriteLine($"ExecuteKingMultipleCapture: From ({fromRow},{fromCol}) to ({toRow},{toCol})");
+   // Console.WriteLine($"ExecuteKingMultipleCapture: From ({fromRow},{fromCol}) to ({toRow},{toCol})");
     
     PieceType piece = board.GetPiece(fromRow, fromCol);
     
@@ -314,7 +314,7 @@ private bool ExecuteKingMultipleCapture(int fromRow, int fromCol, int toRow, int
     
     if (rowDiff != colDiff)
     {
-        Console.WriteLine($"ExecuteKingMultipleCapture: Move is not diagonal - rowDiff={rowDiff}, colDiff={colDiff}");
+       // Console.WriteLine($"ExecuteKingMultipleCapture: Move is not diagonal - rowDiff={rowDiff}, colDiff={colDiff}");
         return false;
     }
     
@@ -324,8 +324,8 @@ private bool ExecuteKingMultipleCapture(int fromRow, int fromCol, int toRow, int
     int rowStep = (toRow - fromRow) > 0 ? 1 : -1;
     int colStep = (toCol - fromCol) > 0 ? 1 : -1;
     
-    Console.WriteLine($"ExecuteKingMultipleCapture: Direction steps - row: {rowStep}, col: {colStep}");
-    Console.WriteLine($"ExecuteKingMultipleCapture: Expected path length: {rowDiff} squares");
+   // Console.WriteLine($"ExecuteKingMultipleCapture: Direction steps - row: {rowStep}, col: {colStep}");
+    //Console.WriteLine($"ExecuteKingMultipleCapture: Expected path length: {rowDiff} squares");
     
     int currentRow = fromRow + rowStep;
     int currentCol = fromCol + colStep;
@@ -334,33 +334,33 @@ private bool ExecuteKingMultipleCapture(int fromRow, int fromCol, int toRow, int
     while (currentRow != toRow && currentCol != toCol)
     {
         stepCount++;
-        Console.WriteLine($"ExecuteKingMultipleCapture: Step {stepCount} - Checking position ({currentRow},{currentCol})");
+    //    Console.WriteLine($"ExecuteKingMultipleCapture: Step {stepCount} - Checking position ({currentRow},{currentCol})");
         
         if (currentRow < 0 || currentRow >= 8 || currentCol < 0 || currentCol >= 8)
         {
-            Console.WriteLine($"ExecuteKingMultipleCapture: Out of bounds at ({currentRow},{currentCol})");
+           // Console.WriteLine($"ExecuteKingMultipleCapture: Out of bounds at ({currentRow},{currentCol})");
             return false;
         }
         
         if (!board.IsDarkSquare(currentRow, currentCol))
         {
-            Console.WriteLine($"ExecuteKingMultipleCapture: Not dark square at ({currentRow},{currentCol})");
+          //  Console.WriteLine($"ExecuteKingMultipleCapture: Not dark square at ({currentRow},{currentCol})");
             return false;
         }
         
         PieceType currentPiece = board.GetPiece(currentRow, currentCol);
-        Console.WriteLine($"ExecuteKingMultipleCapture: Found piece {currentPiece} at ({currentRow},{currentCol})");
+       // Console.WriteLine($"ExecuteKingMultipleCapture: Found piece {currentPiece} at ({currentRow},{currentCol})");
         
         if (currentPiece != PieceType.Empty)
         {
             if (IsSameColor(piece, currentPiece))
             {
-                Console.WriteLine($"ExecuteKingMultipleCapture: Same color piece at ({currentRow},{currentCol})");
+              //  Console.WriteLine($"ExecuteKingMultipleCapture: Same color piece at ({currentRow},{currentCol})");
                 return false;
             }
             
             capturedPieces.Add((currentRow, currentCol));
-            Console.WriteLine($"ExecuteKingMultipleCapture: Will capture {currentPiece} at ({currentRow},{currentCol})");
+        //    Console.WriteLine($"ExecuteKingMultipleCapture: Will capture {currentPiece} at ({currentRow},{currentCol})");
         }
         
         currentRow += rowStep;
@@ -369,35 +369,35 @@ private bool ExecuteKingMultipleCapture(int fromRow, int fromCol, int toRow, int
         // ZABEZPIECZENIE: Zapobiegaj nieskończonej pętli
         if (stepCount > 10)
         {
-            Console.WriteLine($"ExecuteKingMultipleCapture: Too many steps, breaking");
+          //  Console.WriteLine($"ExecuteKingMultipleCapture: Too many steps, breaking");
             return false;
         }
     }
     
-    Console.WriteLine($"ExecuteKingMultipleCapture: Final position reached: ({currentRow},{currentCol}), expected: ({toRow},{toCol})");
+    //Console.WriteLine($"ExecuteKingMultipleCapture: Final position reached: ({currentRow},{currentCol}), expected: ({toRow},{toCol})");
     
     // POPRAWKA: Sprawdź czy dotarliśmy do właściwego miejsca
     if (currentRow != toRow || currentCol != toCol)
     {
-        Console.WriteLine($"ExecuteKingMultipleCapture: Path doesn't lead to target position");
+      //  Console.WriteLine($"ExecuteKingMultipleCapture: Path doesn't lead to target position");
         return false;
     }
     
-    Console.WriteLine($"ExecuteKingMultipleCapture: Target position ({toRow},{toCol}) piece: {board.GetPiece(toRow, toCol)}");
+   // Console.WriteLine($"ExecuteKingMultipleCapture: Target position ({toRow},{toCol}) piece: {board.GetPiece(toRow, toCol)}");
     
     if (board.GetPiece(toRow, toCol) != PieceType.Empty)
     {
-        Console.WriteLine($"ExecuteKingMultipleCapture: Target square ({toRow},{toCol}) is not empty");
+        //Console.WriteLine($"ExecuteKingMultipleCapture: Target square ({toRow},{toCol}) is not empty");
         return false;
     }
     
     if (capturedPieces.Count == 0)
     {
-        Console.WriteLine("ExecuteKingMultipleCapture: No pieces to capture");
+      //  Console.WriteLine("ExecuteKingMultipleCapture: No pieces to capture");
         return false;
     }
     
-    Console.WriteLine($"ExecuteKingMultipleCapture: Capturing {capturedPieces.Count} pieces");
+   // Console.WriteLine($"ExecuteKingMultipleCapture: Capturing {capturedPieces.Count} pieces");
     
     // Wykonaj wielokrotne bicie
     board.SetPiece(fromRow, fromCol, PieceType.Empty);
@@ -405,7 +405,7 @@ private bool ExecuteKingMultipleCapture(int fromRow, int fromCol, int toRow, int
     foreach (var (capturedRow, capturedCol) in capturedPieces)
     {
         board.SetPiece(capturedRow, capturedCol, PieceType.Empty);
-        Console.WriteLine($"ExecuteKingMultipleCapture: Captured piece at ({capturedRow},{capturedCol})");
+       // Console.WriteLine($"ExecuteKingMultipleCapture: Captured piece at ({capturedRow},{capturedCol})");
     }
     
     board.SetPiece(toRow, toCol, piece);
@@ -416,14 +416,14 @@ private bool ExecuteKingMultipleCapture(int fromRow, int fromCol, int toRow, int
     {
         mustCaptureFrom = (toRow, toCol);
         captureSequence.Add((toRow, toCol));
-        Console.WriteLine($"ExecuteKingMultipleCapture: Further captures available from ({toRow},{toCol})");
+        //Console.WriteLine($"ExecuteKingMultipleCapture: Further captures available from ({toRow},{toCol})");
         return true;
     }
     
     mustCaptureFrom = null;
     captureSequence.Clear();
     isWhiteTurn = !isWhiteTurn;
-    Console.WriteLine("ExecuteKingMultipleCapture: Sequence completed");
+    //Console.WriteLine("ExecuteKingMultipleCapture: Sequence completed");
     return true;
 }
 
@@ -435,13 +435,13 @@ private bool ExecuteKingMultipleCapture(int fromRow, int fromCol, int toRow, int
             if (piece == PieceType.WhitePawn && row == 0)
             {
                 board.SetPiece(row, col, PieceType.WhiteKing);
-                Console.WriteLine($"White pawn promoted to king at ({row},{col})");
+                //Console.WriteLine($"White pawn promoted to king at ({row},{col})");
                 return true;
             }
             else if (piece == PieceType.BlackPawn && row == 7)
             {
                 board.SetPiece(row, col, PieceType.BlackKing);
-                Console.WriteLine($"Black pawn promoted to king at ({row},{col})");
+               // Console.WriteLine($"Black pawn promoted to king at ({row},{col})");
                 return true;
             }
             return false;
@@ -461,7 +461,7 @@ public Dictionary<(int row, int col), List<(int row, int col)>> GetAllPossibleCa
 {
     var result = new Dictionary<(int, int), List<(int, int)>>();
     
-    Console.WriteLine($"GetAllPossibleCaptures: Checking for {(isWhiteTurn ? "White" : "Black")} player");
+    //Console.WriteLine($"GetAllPossibleCaptures: Checking for {(isWhiteTurn ? "White" : "Black")} player");
     
     for (int row = 0; row < 8; row++)
     {
@@ -482,18 +482,18 @@ public Dictionary<(int row, int col), List<(int row, int col)>> GetAllPossibleCa
                 var allCaptures = new List<(int, int)>();
                 allCaptures.AddRange(captures.Select(c => (c.toRow, c.toCol)));
                 
-                Console.WriteLine($"Single captures from ({row},{col}):");
+               // Console.WriteLine($"Single captures from ({row},{col}):");
                 foreach (var capture in captures)
                 {
-                    Console.WriteLine($"  to ({capture.toRow},{capture.toCol}) capturing ({capture.capturedRow},{capture.capturedCol})");
+                    //Console.WriteLine($"  to ({capture.toRow},{capture.toCol}) capturing ({capture.capturedRow},{capture.capturedCol})");
                 }
                 
-                Console.WriteLine($"Multiple capture sequences from ({row},{col}):");
+               // Console.WriteLine($"Multiple capture sequences from ({row},{col}):");
                 foreach (var sequence in multipleCaptures)
                 {
                     if (sequence.Count > 0)
                     {
-                        Console.WriteLine($"  Sequence: {string.Join(" → ", sequence.Select(s => $"({s.row},{s.col})"))}");
+                        //Console.WriteLine($"  Sequence: {string.Join(" → ", sequence.Select(s => $"({s.row},{s.col})"))}");
                         allCaptures.Add(sequence.Last());
                     }
                 }
@@ -501,7 +501,7 @@ public Dictionary<(int row, int col), List<(int row, int col)>> GetAllPossibleCa
                 if (allCaptures.Count > 0)
                 {
                     result[(row, col)] = allCaptures.Distinct().ToList();
-                    Console.WriteLine($"Total captures from ({row},{col}): {allCaptures.Count}");
+                    //Console.WriteLine($"Total captures from ({row},{col}): {allCaptures.Count}");
                 }
             }
         }

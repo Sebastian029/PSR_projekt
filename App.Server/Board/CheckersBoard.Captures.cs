@@ -16,7 +16,7 @@ namespace App.Server
                 // Walidacja współrzędnych
                 if (row < 0 || row >= 8 || col < 0 || col >= 8)
                 {
-                    Console.WriteLine($"GetValidCaptures: Invalid coordinates ({row}, {col})");
+                    //Console.WriteLine($"GetValidCaptures: Invalid coordinates ({row}, {col})");
                     return captures;
                 }
                 
@@ -42,7 +42,7 @@ namespace App.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in GetValidCaptures for ({row},{col}): {ex.Message}");
+                //Console.WriteLine($"Error in GetValidCaptures for ({row},{col}): {ex.Message}");
             }
 
             return captures;
@@ -76,7 +76,7 @@ namespace App.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in AddPawnCaptures for ({row},{col}): {ex.Message}");
+               // Console.WriteLine($"Error in AddPawnCaptures for ({row},{col}): {ex.Message}");
             }
         }
 
@@ -148,7 +148,7 @@ namespace App.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in AddKingCaptures for ({row},{col}): {ex.Message}");
+               // Console.WriteLine($"Error in AddKingCaptures for ({row},{col}): {ex.Message}");
             }
         }
 

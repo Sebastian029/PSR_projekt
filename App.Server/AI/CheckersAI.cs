@@ -27,11 +27,11 @@ public class CheckersAI
         if (_serverAddresses.Count > 0)
         {
             _minimaxDistributor = new MinimaxDistributor(_serverAddresses);
-            Console.WriteLine($"Initialized distributor with {_serverAddresses.Count} server(s)");
+           Console.WriteLine($"Initialized distributor with {_serverAddresses.Count} server(s)");
         }
         else
         {
-            Console.WriteLine("NO SERVER AVAILABLE");
+            //Console.WriteLine("NO SERVER AVAILABLE");
         }
 
         _minimax = new Minimax(depth, granulation, _evaluator, _minimaxDistributor);
@@ -61,8 +61,8 @@ public class CheckersAI
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error in CalculateOptimalMove: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+           // Console.WriteLine($"Error in CalculateOptimalMove: {ex.Message}");
+           // Console.WriteLine($"Stack trace: {ex.StackTrace}");
             return (-1, -1, -1, -1);
         }
     }
@@ -84,12 +84,12 @@ public class CheckersAI
             if (_serverAddresses.Count > 0)
             {
                 _minimaxDistributor = new MinimaxDistributor(_serverAddresses);
-                Console.WriteLine($"Updated distributor with {_serverAddresses.Count} server(s)");
+               // Console.WriteLine($"Updated distributor with {_serverAddresses.Count} server(s)");
             }
             else
             {
                 _minimaxDistributor = null;
-                Console.WriteLine("NO SERVER AVAILABLE");
+              //  Console.WriteLine("NO SERVER AVAILABLE");
             }
         }
 

@@ -82,7 +82,7 @@ namespace App.Server
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in Clone(): {ex.Message}");
+               // Console.WriteLine($"Error in Clone(): {ex.Message}");
                 return null;
             }
         }
@@ -136,7 +136,7 @@ namespace App.Server
         {
             if (row < 0 || row >= 8 || col < 0 || col >= 8)
             {
-                Console.WriteLine($"GetPiece: Invalid coordinates ({row}, {col})");
+               // Console.WriteLine($"GetPiece: Invalid coordinates ({row}, {col})");
                 return PieceType.Empty;
             }
     
@@ -147,7 +147,7 @@ namespace App.Server
         {
             if (row < 0 || row >= 8 || col < 0 || col >= 8)
             {
-                Console.WriteLine($"SetPiece: Invalid coordinates ({row}, {col})");
+               // Console.WriteLine($"SetPiece: Invalid coordinates ({row}, {col})");
                 return;
             }
     

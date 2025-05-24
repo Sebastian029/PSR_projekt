@@ -17,7 +17,7 @@ public List<(int row, int col)> GetValidMoves(int row, int col)
         // Walidacja współrzędnych
         if (row < 0 || row >= 8 || col < 0 || col >= 8)
         {
-            Console.WriteLine($"GetValidMoves: Invalid coordinates ({row}, {col})");
+           // Console.WriteLine($"GetValidMoves: Invalid coordinates ({row}, {col})");
             return moves;
         }
         
@@ -43,7 +43,7 @@ public List<(int row, int col)> GetValidMoves(int row, int col)
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Error in GetValidMoves for ({row},{col}): {ex.Message}");
+        //Console.WriteLine($"Error in GetValidMoves for ({row},{col}): {ex.Message}");
     }
 
     return moves;
@@ -69,7 +69,7 @@ private void AddPawnMoves(List<(int, int)> moves, int row, int col, int directio
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Error in AddPawnMoves for ({row},{col}): {ex.Message}");
+       // Console.WriteLine($"Error in AddPawnMoves for ({row},{col}): {ex.Message}");
     }
 }
 
@@ -113,7 +113,7 @@ private void AddKingMoves(List<(int, int)> moves, int row, int col)
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Error in AddKingMoves for ({row},{col}): {ex.Message}");
+       // Console.WriteLine($"Error in AddKingMoves for ({row},{col}): {ex.Message}");
     }
 }
 
