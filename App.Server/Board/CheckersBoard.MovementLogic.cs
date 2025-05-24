@@ -8,6 +8,7 @@ namespace App.Server
     public partial class CheckersBoard
     {
         // CheckersBoard.cs
+// CheckersBoard.cs - poprawiona metoda MovePiece
 public void MovePiece(int fromRow, int fromCol, int toRow, int toCol)
 {
     // Walidacja współrzędnych
@@ -25,19 +26,15 @@ public void MovePiece(int fromRow, int fromCol, int toRow, int toCol)
         return;
     }
 
-    // Walidacja kierunku tylko dla pionków (nie dla królów)
-    if (piece == PieceType.WhitePawn && toRow >= fromRow)
+    // ZABEZPIECZENIE: Sprawdź czy na pozycji docelowej nie ma już damki
+    PieceType targetPiece = GetPiece(toRow, toCol);
+    if (targetPiece == PieceType.WhiteKing || targetPiece == PieceType.BlackKing)
     {
-        Console.WriteLine($"MovePiece: White pawn cannot move from row {fromRow} to row {toRow}");
-        return;
-    }
-    if (piece == PieceType.BlackPawn && toRow <= fromRow)
-    {
-        Console.WriteLine($"MovePiece: Black pawn cannot move from row {fromRow} to row {toRow}");
+        Console.WriteLine($"MovePiece: Target position ({toRow},{toCol}) already has a king, skipping move");
         return;
     }
 
-    // Królowie mogą poruszać się w dowolnym kierunku - brak ograniczeń kierunku
+    //Console.WriteLine($"MovePiece: Moving {piece} from ({fromRow},{fromCol}) to ({toRow},{toCol})");
 
     SetPiece(fromRow, fromCol, PieceType.Empty);
     SetPiece(toRow, toCol, piece);
@@ -48,7 +45,7 @@ public void MovePiece(int fromRow, int fromCol, int toRow, int toCol)
     
     if (rowDiff > 1 && colDiff > 1 && rowDiff == colDiff)
     {
-        // Dla królów - usuń wszystkie figury na ścieżce bicia
+        // Usuń zbite figury na ścieżce
         int rowStep = (toRow - fromRow) > 0 ? 1 : -1;
         int colStep = (toCol - fromCol) > 0 ? 1 : -1;
         
@@ -60,7 +57,7 @@ public void MovePiece(int fromRow, int fromCol, int toRow, int toCol)
             if (middleRow >= 0 && middleRow < 8 && middleCol >= 0 && middleCol < 8)
             {
                 PieceType middlePiece = GetPiece(middleRow, middleCol);
-                if (middlePiece != PieceType.Empty && !IsSameColor(piece, middlePiece))
+                if (middlePiece != PieceType.Empty)
                 {
                     SetPiece(middleRow, middleCol, PieceType.Empty);
                     Console.WriteLine($"Captured piece at ({middleRow},{middleCol})");
@@ -68,37 +65,21 @@ public void MovePiece(int fromRow, int fromCol, int toRow, int toCol)
             }
         }
     }
-    else if (rowDiff == 2 && colDiff == 2)
-    {
-        // Standardowe bicie dla pionków
-        int middleRow = (fromRow + toRow) / 2;
-        int middleCol = (fromCol + toCol) / 2;
-        SetPiece(middleRow, middleCol, PieceType.Empty);
-        Console.WriteLine($"Captured piece at ({middleRow},{middleCol})");
-    }
 
-    // Promuj do damki (tylko pionki)
-    if (piece == PieceType.WhitePawn && toRow == 0)
+    // ZABEZPIECZENIE: Promuj do damki TYLKO jeśli to nadal pionek
+    PieceType finalPiece = GetPiece(toRow, toCol);
+    if (finalPiece == PieceType.WhitePawn && toRow == 0)
     {
         SetPiece(toRow, toCol, PieceType.WhiteKing);
-        Console.WriteLine($"White pawn promoted to king at ({toRow},{toCol})");
+        //Console.WriteLine($"White pawn promoted to king at ({toRow},{toCol})");
     }
-    else if (piece == PieceType.BlackPawn && toRow == 7)
+    else if (finalPiece == PieceType.BlackPawn && toRow == 7)
     {
         SetPiece(toRow, toCol, PieceType.BlackKing);
-        Console.WriteLine($"Black pawn promoted to king at ({toRow},{toCol})");
+        //Console.WriteLine($"Black pawn promoted to king at ({toRow},{toCol})");
     }
 }
 
-
-        public void MovePiece(object from, object to)
-        {
-            // Kompatybilność z oryginalnym interfejsem
-            if (from is (int fromRow, int fromCol) && to is (int toRow, int toCol))
-            {
-                MovePiece(fromRow, fromCol, toRow, toCol);
-            }
-        }
 
         private bool IsSameColor(PieceType piece1, PieceType piece2)
         {

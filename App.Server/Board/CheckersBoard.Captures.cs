@@ -10,22 +10,39 @@ namespace App.Server
         public List<(int toRow, int toCol, int capturedRow, int capturedCol)> GetValidCaptures(int row, int col)
         {
             List<(int, int, int, int)> captures = new List<(int, int, int, int)>();
-            PieceType piece = GetPiece(row, col);
             
-            if (piece == PieceType.Empty || !IsDarkSquare(row, col)) 
-                return captures;
+            try
+            {
+                // Walidacja współrzędnych
+                if (row < 0 || row >= 8 || col < 0 || col >= 8)
+                {
+                    Console.WriteLine($"GetValidCaptures: Invalid coordinates ({row}, {col})");
+                    return captures;
+                }
+                
+                PieceType piece = GetPiece(row, col);
+                
+                if (piece == PieceType.Empty || !IsDarkSquare(row, col)) 
+                {
+                    return captures;
+                }
 
-            if (piece == PieceType.WhitePawn)
-            {
-                AddPawnCaptures(captures, row, col, -1, piece);
+                if (piece == PieceType.WhitePawn)
+                {
+                    AddPawnCaptures(captures, row, col, -1, piece);
+                }
+                else if (piece == PieceType.BlackPawn)
+                {
+                    AddPawnCaptures(captures, row, col, 1, piece);
+                }
+                else if (piece == PieceType.WhiteKing || piece == PieceType.BlackKing)
+                {
+                    AddKingCaptures(captures, row, col, piece);
+                }
             }
-            else if (piece == PieceType.BlackPawn)
+            catch (Exception ex)
             {
-                AddPawnCaptures(captures, row, col, 1, piece);
-            }
-            else if (piece == PieceType.WhiteKing || piece == PieceType.BlackKing)
-            {
-                AddKingCaptures(captures, row, col, piece);
+                Console.WriteLine($"Error in GetValidCaptures for ({row},{col}): {ex.Message}");
             }
 
             return captures;
@@ -33,106 +50,109 @@ namespace App.Server
 
         private void AddPawnCaptures(List<(int, int, int, int)> captures, int row, int col, int direction, PieceType piece)
         {
-            int[] colOffsets = { -1, 1 };
-            
-            foreach (int colOffset in colOffsets)
+            try
             {
-                int capturedRow = row + direction;
-                int capturedCol = col + colOffset;
-                int landingRow = row + (2 * direction);
-                int landingCol = col + (2 * colOffset);
+                int[] colOffsets = { -1, 1 };
                 
-                if (IsValidPosition(capturedRow, capturedCol) && IsValidPosition(landingRow, landingCol) &&
-                    IsDarkSquare(capturedRow, capturedCol) && IsDarkSquare(landingRow, landingCol))
+                foreach (int colOffset in colOffsets)
                 {
-                    PieceType capturedPiece = GetPiece(capturedRow, capturedCol);
+                    int capturedRow = row + direction;
+                    int capturedCol = col + colOffset;
+                    int landingRow = row + (2 * direction);
+                    int landingCol = col + (2 * colOffset);
                     
-                    if (capturedPiece != PieceType.Empty && !IsSameColor(piece, capturedPiece) && 
-                        IsEmpty(landingRow, landingCol))
+                    if (IsValidPosition(capturedRow, capturedCol) && IsValidPosition(landingRow, landingCol) &&
+                        IsDarkSquare(capturedRow, capturedCol) && IsDarkSquare(landingRow, landingCol))
                     {
-                        captures.Add((landingRow, landingCol, capturedRow, capturedCol));
+                        PieceType capturedPiece = GetPiece(capturedRow, capturedCol);
+                        
+                        if (capturedPiece != PieceType.Empty && !IsSameColor(piece, capturedPiece) && 
+                            IsEmpty(landingRow, landingCol))
+                        {
+                            captures.Add((landingRow, landingCol, capturedRow, capturedCol));
+                        }
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in AddPawnCaptures for ({row},{col}): {ex.Message}");
+            }
         }
 
-        // CheckersBoard.Captures.cs
-private void AddKingCaptures(List<(int, int, int, int)> captures, int row, int col, PieceType piece)
-{
-    try
-    {
-        int[] rowDirections = { -1, 1 };
-        int[] colDirections = { -1, 1 };
-        
-        foreach (int rowDir in rowDirections)
+        private void AddKingCaptures(List<(int, int, int, int)> captures, int row, int col, PieceType piece)
         {
-            foreach (int colDir in colDirections)
+            try
             {
-                PieceType foundPiece = PieceType.Empty;
-                int foundRow = -1, foundCol = -1;
+                int[] rowDirections = { -1, 1 };
+                int[] colDirections = { -1, 1 };
                 
-                // Szukaj pierwszej figury w tym kierunku
-                for (int i = 1; i < 8; i++)
+                foreach (int rowDir in rowDirections)
                 {
-                    int checkRow = row + (i * rowDir);
-                    int checkCol = col + (i * colDir);
-                    
-                    // Sprawdź granice tablicy
-                    if (checkRow < 0 || checkRow >= 8 || checkCol < 0 || checkCol >= 8)
-                        break;
-                        
-                    if (!IsDarkSquare(checkRow, checkCol))
-                        break;
-                        
-                    PieceType currentPiece = GetPiece(checkRow, checkCol);
-                    if (currentPiece != PieceType.Empty)
+                    foreach (int colDir in colDirections)
                     {
-                        if (!IsSameColor(piece, currentPiece))
-                        {
-                            foundPiece = currentPiece;
-                            foundRow = checkRow;
-                            foundCol = checkCol;
-                        }
-                        break; // Zatrzymaj się przy pierwszej napotkanej figurze
-                    }
-                }
-                
-                // Jeśli znaleziono figurę przeciwnika, sprawdź możliwe lądowania
-                if (foundPiece != PieceType.Empty && foundRow != -1 && foundCol != -1)
-                {
-                    for (int i = 1; i < 8; i++)
-                    {
-                        int landingRow = foundRow + (i * rowDir);
-                        int landingCol = foundCol + (i * colDir);
+                        PieceType foundPiece = PieceType.Empty;
+                        int foundRow = -1, foundCol = -1;
                         
-                        // Sprawdź granice tablicy
-                        if (landingRow < 0 || landingRow >= 8 || landingCol < 0 || landingCol >= 8)
-                            break;
-                            
-                        if (!IsDarkSquare(landingRow, landingCol))
-                            break;
-                            
-                        if (IsEmpty(landingRow, landingCol))
+                        // Szukaj pierwszej figury w tym kierunku
+                        for (int i = 1; i < 8; i++)
                         {
-                            captures.Add((landingRow, landingCol, foundRow, foundCol));
+                            int checkRow = row + (i * rowDir);
+                            int checkCol = col + (i * colDir);
+                            
+                            if (checkRow < 0 || checkRow >= 8 || checkCol < 0 || checkCol >= 8)
+                                break;
+                                
+                            if (!IsDarkSquare(checkRow, checkCol))
+                                break;
+                                
+                            PieceType currentPiece = GetPiece(checkRow, checkCol);
+                            if (currentPiece != PieceType.Empty)
+                            {
+                                if (!IsSameColor(piece, currentPiece))
+                                {
+                                    foundPiece = currentPiece;
+                                    foundRow = checkRow;
+                                    foundCol = checkCol;
+                                }
+                                break;
+                            }
                         }
-                        else
+                        
+                        // Jeśli znaleziono figurę przeciwnika, sprawdź możliwe lądowania
+                        if (foundPiece != PieceType.Empty && foundRow != -1 && foundCol != -1)
                         {
-                            break; // Zatrzymaj się przy napotkaniu figury
+                            for (int i = 1; i < 8; i++)
+                            {
+                                int landingRow = foundRow + (i * rowDir);
+                                int landingCol = foundCol + (i * colDir);
+                                
+                                if (landingRow < 0 || landingRow >= 8 || landingCol < 0 || landingCol >= 8)
+                                    break;
+                                    
+                                if (!IsDarkSquare(landingRow, landingCol))
+                                    break;
+                                    
+                                if (IsEmpty(landingRow, landingCol))
+                                {
+                                    captures.Add((landingRow, landingCol, foundRow, foundCol));
+                                }
+                                else
+                                {
+                                    break;
+                                }
+                            }
                         }
                     }
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in AddKingCaptures for ({row},{col}): {ex.Message}");
+            }
         }
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error in AddKingCaptures for ({row},{col}): {ex.Message}");
-    }
-}
 
-
-        public List<List<(int, int)>> GetMultipleCaptures(int row, int col, List<(int, int)> previousCaptures = null)
+        public List<List<(int row, int col)>> GetMultipleCaptures(int row, int col, List<(int, int)> previousCaptures = null)
         {
             List<List<(int, int)>> multipleCaptures = new List<List<(int, int)>>();
             PieceType piece = GetPiece(row, col);
@@ -192,5 +212,6 @@ private void AddKingCaptures(List<(int, int, int, int)> captures, int row, int c
 
             return multipleCaptures.Distinct().ToList();
         }
+
     }
 }

@@ -21,17 +21,32 @@ public partial class CheckersGame
     public bool IsWhiteTurn => isWhiteTurn;
     public (int row, int col)? MustCaptureFrom => mustCaptureFrom;
 
+    // public CheckersGame()
+    // {
+    //     board = new CheckersBoard();
+    //     isWhiteTurn = true;
+    //     _serverAddresses = new List<string>();
+    //     _serverAddresses.Add("http://localhost:5001");
+    //     _serverAddresses.Add("http://localhost:5002");
+    //     
+    //     Console.WriteLine($"Using server address for distributed calculation: {_serverAddresses[0]}");
+    //     checkersAi = new CheckersAI(depth: 5, granulation: 1, isPerformanceTest: false, serverAddresses: _serverAddresses);
+    // }
+    // CheckersGame.cs - konstruktor
     public CheckersGame()
     {
         board = new CheckersBoard();
         isWhiteTurn = true;
         _serverAddresses = new List<string>();
-        _serverAddresses.Add("http://localhost:5001");
-        _serverAddresses.Add("http://localhost:5002");
-        
-        Console.WriteLine($"Using server address for distributed calculation: {_serverAddresses[0]}");
-        checkersAi = new CheckersAI(depth: 5, granulation: 1, isPerformanceTest: false, serverAddresses: _serverAddresses);
+    
+        // Wyłącz serwery dla testów lokalnych
+        // _serverAddresses.Add("http://localhost:5001");
+        // _serverAddresses.Add("http://localhost:5002");
+    
+        Console.WriteLine("Using LOCAL calculation only (no distributed servers)");
+        checkersAi = new CheckersAI(depth: 5, granulation: 10, isPerformanceTest: false, serverAddresses: _serverAddresses);
     }
+
 
     public void SetDifficulty(int depth, int granulation, bool isPerformanceTest, bool isPlayerMode)
     {

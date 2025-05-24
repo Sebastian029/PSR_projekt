@@ -58,28 +58,75 @@ namespace App.Client
         }
 
         private uint[] ConvertBoardTo3Uint(CheckersBoard board)
-        {
-            uint[] compressedBoard = new uint[3];
-            int fieldIndex = 0;
+{
+    uint[] compressedBoard = new uint[3];
+    int fieldIndex = 0;
 
-            // Iteruj przez szachownicę 8x8 i pakuj tylko ciemne pola
-            for (int row = 0; row < 8; row++)
+    // Iteruj przez szachownicę w prawidłowej kolejności (row-major, tylko ciemne pola)
+    for (int row = 0; row < 8; row++)
+    {
+        for (int col = 0; col < 8; col++)
+        {
+            if (IsDarkSquare(row, col))
             {
-                for (int col = 0; col < 8; col++)
+                if (fieldIndex >= 32)
                 {
-                    if (IsDarkSquare(row, col))
-                    {
-                        PieceType piece = board.GetPiece(row, col);
-                        byte pieceValue = ConvertPieceTypeToByte(piece);
-                        
-                        SetFieldInCompressedBoard(compressedBoard, fieldIndex, pieceValue);
-                        fieldIndex++;
-                    }
+                    Console.WriteLine($"Warning: Too many dark squares, index {fieldIndex}");
+                    break;
+                }
+
+                try
+                {
+                    PieceType piece = board.GetPiece(row, col);
+                    byte pieceValue = ConvertPieceTypeToByte(piece);
+                    SetFieldInCompressedBoard(compressedBoard, fieldIndex, pieceValue);
+                    fieldIndex++;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error converting piece at ({row},{col}): {ex.Message}");
                 }
             }
-
-            return compressedBoard;
         }
+    }
+
+    Console.WriteLine($"Converted {fieldIndex} fields to compressed board");
+    return compressedBoard;
+}
+
+private void SetFieldInCompressedBoard(uint[] board, int index, byte value)
+{
+    if (index < 0 || index >= 32)
+    {
+        Console.WriteLine($"SetField: Invalid index {index}");
+        return;
+    }
+
+    // Każde pole zajmuje 3 bity, 10 pól na uint (30 bitów)
+    int arrayIndex = index / 10;
+    int bitPosition = (index % 10) * 3;
+
+    if (arrayIndex >= 3)
+    {
+        Console.WriteLine($"SetField: Array index {arrayIndex} out of bounds");
+        return;
+    }
+
+    try
+    {
+        // Wyczyść poprzednią wartość
+        uint mask = ~((uint)0x7 << bitPosition);
+        board[arrayIndex] &= mask;
+
+        // Ustaw nową wartość
+        board[arrayIndex] |= ((uint)value & 0x7) << bitPosition;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error setting field {index}: {ex.Message}");
+    }
+}
+
 
         private bool IsDarkSquare(int row, int col)
         {
@@ -99,20 +146,7 @@ namespace App.Client
             };
         }
 
-        private void SetFieldInCompressedBoard(uint[] board, int index, byte value)
-        {
-            if (index < 0 || index >= 32) return; // 32 ciemne pola na szachownicy
-
-            int arrayIndex = index / 10; // 10 pól na uint (3 bity każde + 2 bity zapasu)
-            int bitPosition = (index % 10) * 3; // 3 bity na pole
-
-            // Wyczyść poprzednią wartość
-            uint mask = ~((uint)0x7 << bitPosition);
-            board[arrayIndex] &= mask;
-
-            // Ustaw nową wartość
-            board[arrayIndex] |= ((uint)value & 0x7) << bitPosition;
-        }
+       
 
         // Metoda pomocnicza do odczytu pola (do testowania)
         private byte GetFieldFromCompressedBoard(uint[] board, int index)

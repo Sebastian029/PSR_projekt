@@ -15,6 +15,11 @@ namespace App.Server
             board = new PieceType[BOARD_SIZE, BOARD_SIZE];
             InitializeBoard();
         }
+        public bool IsDarkSquare(int row, int col)
+        {
+            return (row + col) % 2 == 1;
+        }
+
 
         private void InitializeBoard()
         {
@@ -123,10 +128,7 @@ namespace App.Server
             return JsonSerializer.Serialize(boardState);
         }
 
-        public bool IsDarkSquare(int row, int col)
-        {
-            return (row + col) % 2 == 1;
-        }
+        
         
 
         // CheckersBoard.cs

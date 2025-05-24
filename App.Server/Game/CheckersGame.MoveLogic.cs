@@ -43,6 +43,44 @@ public bool PlayMove(int fromRow, int fromCol, int toRow, int toCol)
         return false;
     }
 
+    // Sprawdź czy ruch jest po przekątnej (TYLKO dla zwykłych ruchów)
+    int rowDiff = Math.Abs(toRow - fromRow);
+    int colDiff = Math.Abs(toCol - fromCol);
+    
+    // POPRAWKA: Sprawdź najpierw czy są wymagane bicia
+    var allCaptures = GetAllPossibleCaptures();
+    if (allCaptures.Count > 0)
+    {
+        Console.WriteLine($"Captures are mandatory. Checking if move ({fromRow},{fromCol}) to ({toRow},{toCol}) is a valid capture.");
+        
+        if (!allCaptures.ContainsKey((fromRow, fromCol)))
+        {
+            Console.WriteLine($"No captures available from ({fromRow},{fromCol})");
+            return false;
+        }
+        
+        if (!allCaptures[(fromRow, fromCol)].Contains((toRow, toCol)))
+        {
+            Console.WriteLine($"Move to ({toRow},{toCol}) is not a valid capture from ({fromRow},{fromCol})");
+            Console.WriteLine("Available capture targets:");
+            foreach (var target in allCaptures[(fromRow, fromCol)])
+            {
+                Console.WriteLine($"  ({target.row}, {target.col})");
+            }
+            return false;
+        }
+        
+        // To jest prawidłowe bicie - wykonaj je
+        return ExecuteCapture(fromRow, fromCol, toRow, toCol);
+    }
+
+    // Dla zwykłych ruchów - sprawdź czy jest przekątny
+    if (rowDiff != colDiff)
+    {
+        Console.WriteLine("Regular move must be diagonal");
+        return false;
+    }
+
     // Walidacja kierunku TYLKO dla pionków (nie dla królów)
     if (piece == PieceType.WhitePawn && toRow >= fromRow)
     {
@@ -55,33 +93,8 @@ public bool PlayMove(int fromRow, int fromCol, int toRow, int toCol)
         return false;
     }
 
-    // Królowie (WhiteKing, BlackKing) mogą poruszać się w dowolnym kierunku
-
-    // Sprawdź czy ruch jest po przekątnej
-    int rowDiff = Math.Abs(toRow - fromRow);
-    int colDiff = Math.Abs(toCol - fromCol);
-    if (rowDiff != colDiff)
-    {
-        Console.WriteLine("Move must be diagonal");
-        return false;
-    }
-
     try
     {
-        // Sprawdź czy są wymagane bicia
-        var allCaptures = GetAllPossibleCaptures();
-        if (allCaptures.Count > 0)
-        {
-            if (!allCaptures.ContainsKey((fromRow, fromCol)) || 
-                !allCaptures[(fromRow, fromCol)].Contains((toRow, toCol))) 
-            {
-                Console.WriteLine("Capture is mandatory but this move is not a capture");
-                return false;
-            }
-            
-            return ExecuteCapture(fromRow, fromCol, toRow, toCol);
-        }
-
         // Zwykły ruch
         // Dla pionków - tylko ruch o jedno pole
         if ((piece == PieceType.WhitePawn || piece == PieceType.BlackPawn) && 
@@ -121,6 +134,7 @@ public bool PlayMove(int fromRow, int fromCol, int toRow, int toCol)
     }
 }
 
+
 // Dodaj metodę pomocniczą do sprawdzania czy ścieżka jest wolna
 private bool IsPathClear(int fromRow, int fromCol, int toRow, int toCol)
 {
@@ -151,16 +165,7 @@ private bool IsPathClear(int fromRow, int fromCol, int toRow, int toCol)
     }
 
 
-    // Przeciążenie dla kompatybilności z oryginalnym interfejsem
-    public bool PlayMove(int from, int to)
-    {
-        // Konwersja z indeksu 32-polowego na współrzędne 8x8
-        var (fromRow, fromCol) = ConvertFromIndex32(from);
-        var (toRow, toCol) = ConvertFromIndex32(to);
-        
-        return PlayMove(fromRow, fromCol, toRow, toCol);
-    }
-
+    
     public bool PlayAIMove()
     {
         var (fromRow, fromCol, toRow, toCol) = GetAIMove();

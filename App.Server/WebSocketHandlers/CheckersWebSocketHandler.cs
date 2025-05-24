@@ -184,36 +184,78 @@ namespace App.Server.WebSocketHandlers
 
 
 
-        private async Task ProcessComputerTurn(WebSocket webSocket)
-        {
-            bool success = false;
-            var aiMove = _game.GetAIMove();
-            if (aiMove.fromRow != -1)
-            {
-                success = _game.PlayMove(aiMove.fromRow, aiMove.fromCol, aiMove.toRow, aiMove.toCol);
-                
-                // Obsługa wielokrotnych bić
-                while (success && _game.MustCaptureFrom.HasValue && !_game.IsWhiteTurn)
-                {
-                    var captures = _game.GetAllPossibleCaptures();
-                    if (captures.TryGetValue(_game.MustCaptureFrom.Value, out var targets) && targets.Count > 0)
-                    {
-                        var captureTarget = targets[0];
-                        success = _game.PlayMove(_game.MustCaptureFrom.Value.row, _game.MustCaptureFrom.Value.col, 
-                                                captureTarget.row, captureTarget.col);
-                        await SendGameState(webSocket, true);
-                        if (!_game.IsPerformanceTest)
-                            await Task.Delay(300);
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-            }
+        // CheckersWebSocketHandler.cs - poprawiona metoda ProcessComputerTurn
+private async Task ProcessComputerTurn(WebSocket webSocket)
+{
+    int maxMoves = 50; // Zabezpieczenie przed nieskończoną pętlą
+    int moveCount = 0;
 
-            await SendGameState(webSocket, success);
+    while (moveCount < maxMoves)
+    {
+        var aiMove = _game.GetAIMove();
+        if (aiMove.fromRow == -1)
+        {
+            Console.WriteLine("No AI move available");
+            break;
         }
+
+        Console.WriteLine($"AI attempting move {moveCount + 1}: ({aiMove.fromRow},{aiMove.fromCol}) to ({aiMove.toRow},{aiMove.toCol})");
+        
+        bool success = _game.PlayMove(aiMove.fromRow, aiMove.fromCol, aiMove.toRow, aiMove.toCol);
+        if (!success)
+        {
+            Console.WriteLine("AI move failed");
+            break;
+        }
+
+        await SendGameState(webSocket, true);
+        
+        // ZABEZPIECZENIE: Sprawdź czy gra się nie zapętla
+        if (_game.MustCaptureFrom.HasValue && !_game.IsWhiteTurn)
+        {
+            var captures = _game.GetAllPossibleCaptures();
+            if (captures.TryGetValue(_game.MustCaptureFrom.Value, out var targets) && targets.Count > 0)
+            {
+                var captureTarget = targets[0];
+                Console.WriteLine($"Continuing capture sequence: ({_game.MustCaptureFrom.Value.row},{_game.MustCaptureFrom.Value.col}) to ({captureTarget.row},{captureTarget.col})");
+                
+                success = _game.PlayMove(_game.MustCaptureFrom.Value.row, _game.MustCaptureFrom.Value.col, 
+                                        captureTarget.row, captureTarget.col);
+                if (!success)
+                {
+                    Console.WriteLine("Capture sequence move failed, breaking");
+                    break;
+                }
+                
+                await SendGameState(webSocket, true);
+                if (!_game.IsPerformanceTest)
+                    await Task.Delay(300);
+                    
+                moveCount++;
+            }
+            else
+            {
+                Console.WriteLine("No valid captures available, breaking sequence");
+                break;
+            }
+        }
+        else
+        {
+            Console.WriteLine("Computer turn completed");
+            break;
+        }
+        
+        moveCount++;
+    }
+
+    if (moveCount >= maxMoves)
+    {
+        Console.WriteLine("WARNING: Maximum moves reached, possible infinite loop detected");
+    }
+
+    await SendGameState(webSocket, true);
+}
+
 
         private async Task StartComputerVsComputerGame(WebSocket webSocket)
         {
