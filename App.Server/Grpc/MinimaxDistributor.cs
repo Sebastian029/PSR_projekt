@@ -43,8 +43,8 @@ namespace App.Client
                 RequestTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now)
             };
 
-            // Konwersja szachownicy 8x8 na tablicę 3 uint
-            var compressedBoard = ConvertBoardTo3Uint(board);
+            // Konwertuj z 8x8 CheckersBoard na format 32-polowy dla serwera
+            var compressedBoard = ConvertBoardTo32Format(board);
             request.Board.Add(compressedBoard[0]);
             request.Board.Add(compressedBoard[1]);
             request.Board.Add(compressedBoard[2]);
@@ -57,76 +57,41 @@ namespace App.Client
             return response.Score;
         }
 
-        private uint[] ConvertBoardTo3Uint(CheckersBoard board)
-{
-    uint[] compressedBoard = new uint[3];
-    int fieldIndex = 0;
-
-    // Iteruj przez szachownicę w prawidłowej kolejności (row-major, tylko ciemne pola)
-    for (int row = 0; row < 8; row++)
-    {
-        for (int col = 0; col < 8; col++)
+        private uint[] ConvertBoardTo32Format(CheckersBoard board)
         {
-            if (IsDarkSquare(row, col))
-            {
-                if (fieldIndex >= 32)
-                {
-                    Console.WriteLine($"Warning: Too many dark squares, index {fieldIndex}");
-                    break;
-                }
+            uint[] result = new uint[3];
+            int fieldIndex = 0;
 
-                try
+            // Konwertuj z 8x8 na 32-polowy format
+            for (int row = 0; row < 8; row++)
+            {
+                for (int col = 0; col < 8; col++)
                 {
-                    PieceType piece = board.GetPiece(row, col);
-                    byte pieceValue = ConvertPieceTypeToByte(piece);
-                    SetFieldInCompressedBoard(compressedBoard, fieldIndex, pieceValue);
-                    fieldIndex++;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error converting piece at ({row},{col}): {ex.Message}");
+                    if (IsDarkSquare(row, col))
+                    {
+                        if (fieldIndex >= 32) break;
+
+                        PieceType piece = board.GetPiece(row, col);
+                        byte pieceValue = ConvertPieceTypeToByte(piece);
+                        
+                        // Użyj 4 bity na pole (kompatybilne z serwerem)
+                        int boardIndex = fieldIndex / 8;
+                        int bitPosition = (fieldIndex % 8) * 4;
+                        
+                        if (boardIndex < 3)
+                        {
+                            uint mask = 0xFu << bitPosition;
+                            result[boardIndex] = (result[boardIndex] & ~mask) | ((uint)pieceValue << bitPosition);
+                        }
+                        
+                        fieldIndex++;
+                    }
                 }
             }
+
+            Console.WriteLine($"Converted {fieldIndex} fields to 32-format board");
+            return result;
         }
-    }
-
-    Console.WriteLine($"Converted {fieldIndex} fields to compressed board");
-    return compressedBoard;
-}
-
-private void SetFieldInCompressedBoard(uint[] board, int index, byte value)
-{
-    if (index < 0 || index >= 32)
-    {
-        Console.WriteLine($"SetField: Invalid index {index}");
-        return;
-    }
-
-    // Każde pole zajmuje 3 bity, 10 pól na uint (30 bitów)
-    int arrayIndex = index / 10;
-    int bitPosition = (index % 10) * 3;
-
-    if (arrayIndex >= 3)
-    {
-        Console.WriteLine($"SetField: Array index {arrayIndex} out of bounds");
-        return;
-    }
-
-    try
-    {
-        // Wyczyść poprzednią wartość
-        uint mask = ~((uint)0x7 << bitPosition);
-        board[arrayIndex] &= mask;
-
-        // Ustaw nową wartość
-        board[arrayIndex] |= ((uint)value & 0x7) << bitPosition;
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error setting field {index}: {ex.Message}");
-    }
-}
-
 
         private bool IsDarkSquare(int row, int col)
         {
@@ -146,19 +111,6 @@ private void SetFieldInCompressedBoard(uint[] board, int index, byte value)
             };
         }
 
-       
-
-        // Metoda pomocnicza do odczytu pola (do testowania)
-        private byte GetFieldFromCompressedBoard(uint[] board, int index)
-        {
-            if (index < 0 || index >= 32) return 0;
-
-            int arrayIndex = index / 10;
-            int bitPosition = (index % 10) * 3;
-
-            return (byte)((board[arrayIndex] >> bitPosition) & 0x7);
-        }
-
         private string GetNextServerAddress()
         {
             lock (this)
@@ -176,34 +128,6 @@ private void SetFieldInCompressedBoard(uint[] board, int index, byte value)
                 channel?.Dispose();
             }
             _channels.Clear();
-        }
-
-        // Metoda testowa do weryfikacji konwersji
-        public void TestConversion(CheckersBoard board)
-        {
-            var compressed = ConvertBoardTo3Uint(board);
-            Console.WriteLine($"Compressed board: [{compressed[0]}, {compressed[1]}, {compressed[2]}]");
-            
-            // Weryfikacja - odczytaj i porównaj
-            int fieldIndex = 0;
-            for (int row = 0; row < 8; row++)
-            {
-                for (int col = 0; col < 8; col++)
-                {
-                    if (IsDarkSquare(row, col))
-                    {
-                        PieceType originalPiece = board.GetPiece(row, col);
-                        byte compressedValue = GetFieldFromCompressedBoard(compressed, fieldIndex);
-                        byte expectedValue = ConvertPieceTypeToByte(originalPiece);
-                        
-                        if (compressedValue != expectedValue)
-                        {
-                            Console.WriteLine($"Mismatch at field {fieldIndex} ({row},{col}): expected {expectedValue}, got {compressedValue}");
-                        }
-                        fieldIndex++;
-                    }
-                }
-            }
         }
     }
 }

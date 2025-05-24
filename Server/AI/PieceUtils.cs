@@ -1,20 +1,14 @@
-﻿using App.Grpc;
-
-public static class PieceUtils
+﻿namespace MinimaxServer
 {
-    public static bool IsWhite(byte piece) =>
-        piece == (byte)PieceType.WhitePawn || piece == (byte)PieceType.WhiteKing;
-        
-    public static bool IsKing(byte piece) =>
-        piece == (byte)PieceType.WhiteKing || piece == (byte)PieceType.BlackKing;
-        
-    public static bool IsColor(byte piece, bool isWhite) =>
-        isWhite ? IsWhite(piece) : (!IsWhite(piece) && piece != (byte)PieceType.Empty);
-        
-    public static (int row, int col) GetBoardPosition(int index)
+    public static class PieceUtils
     {
-        int row = index / 4;
-        int col = 2 * (index % 4) + (row % 2);
-        return (row, col);
+        public static bool IsWhite(PieceType piece) =>
+            piece == PieceType.WhitePawn || piece == PieceType.WhiteKing;
+
+        public static bool IsKing(PieceType piece) =>
+            piece == PieceType.WhiteKing || piece == PieceType.BlackKing;
+
+        public static bool IsColor(PieceType piece, bool isWhite) =>
+            isWhite ? IsWhite(piece) : (!IsWhite(piece) && piece != PieceType.Empty);
     }
 }

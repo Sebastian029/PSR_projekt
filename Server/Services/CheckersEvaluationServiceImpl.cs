@@ -1,20 +1,19 @@
 ﻿using System.Diagnostics;
 using App.Grpc;
-
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
-using App.Server;
 using Google.Protobuf.WellKnownTypes;
+using MinimaxServer; // Dodaj using dla namespace
 
 namespace MinimaxServer.Services
 {
     public class CheckersEvaluationServiceImpl : CheckersEvaluationService.CheckersEvaluationServiceBase
     {
         private readonly ILogger<CheckersEvaluationServiceImpl> _logger;
-        private readonly IBoardEvaluator _evaluator;
+        private readonly MinimaxServer.IBoardEvaluator _evaluator; // Pełna nazwa namespace
 
-        public CheckersEvaluationServiceImpl(ILogger<CheckersEvaluationServiceImpl> logger, IBoardEvaluator evaluator)
+        public CheckersEvaluationServiceImpl(ILogger<CheckersEvaluationServiceImpl> logger, MinimaxServer.IBoardEvaluator evaluator)
         {
             _logger = logger;
             _evaluator = evaluator;
@@ -25,26 +24,31 @@ namespace MinimaxServer.Services
             var currentTime = DateTimeOffset.Now;
             var requestTime = request.RequestTime.ToDateTimeOffset();
             TimeSpan elapsed = currentTime - requestTime;
-    
-            Console.WriteLine($"Request time: {elapsed.TotalMilliseconds} ms");     
-            
-            var board = new CheckersBoard();
+            Console.WriteLine($"Request time: {elapsed.TotalMilliseconds} ms");
 
-            if (request.Board.Count >= 3)
-            {
-                board.board[0] = request.Board[0];
-                board.board[1] = request.Board[1];
-                board.board[2] = request.Board[2];
-            }
+            Console.WriteLine($"Received depth: {request.Depth}, IsMaximizing: {request.IsMaximizing}");
 
             var stopwatch = new Stopwatch();
             stopwatch.Start();
+
+            // Konwertuj z formatu 32-polowego na szachownicę 8x8
+            var board = BoardConverter.ConvertFrom32Format(request.Board.ToArray());
+            
+            stopwatch.Stop();
+            Console.WriteLine($"Board conversion time: {stopwatch.ElapsedMilliseconds} ms");
+
+            stopwatch.Restart();
             var minimax = new Minimax(request.Depth, _evaluator);
             int score = minimax.MinimaxSearch(board, request.Depth, request.IsMaximizing);
             stopwatch.Stop();
-            Console.WriteLine($"Calculation time: {stopwatch.ElapsedMilliseconds} ms");     
-        
-            return Task.FromResult(new MinimaxResponse { Score = score, ResponseTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now)
+            
+            Console.WriteLine($"Calculation time: {stopwatch.ElapsedMilliseconds} ms");
+            //Console.WriteLine($"Final score: {score}");
+
+            return Task.FromResult(new MinimaxResponse 
+            { 
+                Score = score, 
+                ResponseTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now)
             });
         }
     }
