@@ -1,73 +1,80 @@
-﻿namespace App.Server;
+﻿// CheckersGame.CaptureLogic.cs
+namespace App.Server;
 
 public partial class CheckersGame
 {
-    private bool ExecuteCapture(int from, int to)
+    private bool ExecuteCapture(int fromRow, int fromCol, int toRow, int toCol)
     {
-        byte piece = board.GetField(from);
-        var validCaptures = board.GetValidCaptures(from);
+        PieceType piece = board.GetPiece(fromRow, fromCol);
+        
+        var validCaptures = board.GetValidCaptures(fromRow, fromCol);
+        
+        var targetCapture = validCaptures.FirstOrDefault(c => c.toRow == toRow && c.toCol == toCol);
+        if (targetCapture == default) return false;
 
-        int middleIndex = -1;
-        foreach (var capture in validCaptures)
+        // Wykonaj bicie
+        board.SetPiece(fromRow, fromCol, PieceType.Empty);
+        board.SetPiece(targetCapture.capturedRow, targetCapture.capturedCol, PieceType.Empty);
+        board.SetPiece(toRow, toCol, piece);
+
+        // Sprawdź promocję do damki
+        if (piece == PieceType.WhitePawn && toRow == 0)
         {
-            if (capture.Item1 == to)
-            {
-                middleIndex = capture.Item2;
-                break;
-            }
+            board.SetPiece(toRow, toCol, PieceType.WhiteKing);
+        }
+        else if (piece == PieceType.BlackPawn && toRow == 7)
+        {
+            board.SetPiece(toRow, toCol, PieceType.BlackKing);
         }
 
-        if (middleIndex == -1) return false;
-
-        board.SetField(from, (byte)PieceType.Empty);
-        board.SetField(middleIndex, (byte)PieceType.Empty);
-        board.SetField(to, piece);
-
-        if (piece == (byte)PieceType.WhitePawn && to < 4)
-        {
-            board.SetField(to, (byte)PieceType.WhiteKing);
-        }
-        else if (piece == (byte)PieceType.BlackPawn && to >= 28)
-        {
-            board.SetField(to, (byte)PieceType.BlackKing);
-        }
-
-        var furtherCaptures = board.GetValidCaptures(to);
+        // Sprawdź dalsze bicia
+        var furtherCaptures = board.GetValidCaptures(toRow, toCol);
         if (furtherCaptures.Count > 0)
         {
-            mustCaptureFrom = to;
-            captureSequence.Add(to);
+            mustCaptureFrom = (toRow, toCol);
+            captureSequence.Add((toRow, toCol));
             return true;
         }
 
+        // Koniec sekwencji bić
         mustCaptureFrom = null;
         captureSequence.Clear();
         isWhiteTurn = !isWhiteTurn;
         return true;
     }
 
-    public Dictionary<int, List<int>> GetAllPossibleCaptures()
+    public Dictionary<(int row, int col), List<(int row, int col)>> GetAllPossibleCaptures()
     {
-        var result = new Dictionary<int, List<int>>();
-        for (int i = 0; i < 32; i++)
+        var result = new Dictionary<(int, int), List<(int, int)>>();
+        
+        for (int row = 0; row < 8; row++)
         {
-            byte piece = board.GetField(i);
-            if ((isWhiteTurn && (piece == (byte)PieceType.WhitePawn || piece == (byte)PieceType.WhiteKing)) ||
-                (!isWhiteTurn && (piece == (byte)PieceType.BlackPawn || piece == (byte)PieceType.BlackKing)))
+            for (int col = 0; col < 8; col++)
             {
-                var captures = board.GetValidCaptures(i);
-                var multipleCaptures = board.GetMultipleCaptures(i);
-
-                var allCaptures = new List<int>();
-                allCaptures.AddRange(captures.Select(c => c.Item1));
-                allCaptures.AddRange(multipleCaptures);
-
-                if (allCaptures.Count > 0)
+                if (!board.IsDarkSquare(row, col)) continue;
+                
+                PieceType piece = board.GetPiece(row, col);
+                
+                bool isCurrentPlayerPiece = (isWhiteTurn && (piece == PieceType.WhitePawn || piece == PieceType.WhiteKing)) ||
+                                          (!isWhiteTurn && (piece == PieceType.BlackPawn || piece == PieceType.BlackKing));
+                
+                if (isCurrentPlayerPiece)
                 {
-                    result[i] = allCaptures;
+                    var captures = board.GetValidCaptures(row, col);
+                    var multipleCaptures = board.GetMultipleCaptures(row, col);
+                    
+                    var allCaptures = new List<(int, int)>();
+                    allCaptures.AddRange(captures.Select(c => (c.toRow, c.toCol)));
+                    allCaptures.AddRange(multipleCaptures.SelectMany(sequence => sequence));
+                    
+                    if (allCaptures.Count > 0)
+                    {
+                        result[(row, col)] = allCaptures.Distinct().ToList();
+                    }
                 }
             }
         }
+        
         return result;
     }
 }

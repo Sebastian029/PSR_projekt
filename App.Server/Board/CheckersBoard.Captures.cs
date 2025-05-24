@@ -56,63 +56,81 @@ namespace App.Server
             }
         }
 
-        private void AddKingCaptures(List<(int, int, int, int)> captures, int row, int col, PieceType piece)
+        // CheckersBoard.Captures.cs
+private void AddKingCaptures(List<(int, int, int, int)> captures, int row, int col, PieceType piece)
+{
+    try
+    {
+        int[] rowDirections = { -1, 1 };
+        int[] colDirections = { -1, 1 };
+        
+        foreach (int rowDir in rowDirections)
         {
-            int[] directions = { -1, 1 };
-            
-            foreach (int rowDir in directions)
+            foreach (int colDir in colDirections)
             {
-                foreach (int colDir in directions)
+                PieceType foundPiece = PieceType.Empty;
+                int foundRow = -1, foundCol = -1;
+                
+                // Szukaj pierwszej figury w tym kierunku
+                for (int i = 1; i < 8; i++)
                 {
-                    PieceType foundPiece = PieceType.Empty;
-                    int foundRow = -1, foundCol = -1;
+                    int checkRow = row + (i * rowDir);
+                    int checkCol = col + (i * colDir);
                     
-                    // Szukaj pierwszej figury w tym kierunku
-                    for (int i = 1; i < BOARD_SIZE; i++)
-                    {
-                        int checkRow = row + (i * rowDir);
-                        int checkCol = col + (i * colDir);
+                    // Sprawdź granice tablicy
+                    if (checkRow < 0 || checkRow >= 8 || checkCol < 0 || checkCol >= 8)
+                        break;
                         
-                        if (!IsValidPosition(checkRow, checkCol) || !IsDarkSquare(checkRow, checkCol))
-                            break;
-                            
-                        PieceType currentPiece = GetPiece(checkRow, checkCol);
-                        if (currentPiece != PieceType.Empty)
-                        {
-                            if (!IsSameColor(piece, currentPiece))
-                            {
-                                foundPiece = currentPiece;
-                                foundRow = checkRow;
-                                foundCol = checkCol;
-                            }
-                            break;
-                        }
-                    }
-                    
-                    // Jeśli znaleziono figurę przeciwnika, sprawdź możliwe lądowania
-                    if (foundPiece != PieceType.Empty)
+                    if (!IsDarkSquare(checkRow, checkCol))
+                        break;
+                        
+                    PieceType currentPiece = GetPiece(checkRow, checkCol);
+                    if (currentPiece != PieceType.Empty)
                     {
-                        for (int i = 1; i < BOARD_SIZE; i++)
+                        if (!IsSameColor(piece, currentPiece))
                         {
-                            int landingRow = foundRow + (i * rowDir);
-                            int landingCol = foundCol + (i * colDir);
+                            foundPiece = currentPiece;
+                            foundRow = checkRow;
+                            foundCol = checkCol;
+                        }
+                        break; // Zatrzymaj się przy pierwszej napotkanej figurze
+                    }
+                }
+                
+                // Jeśli znaleziono figurę przeciwnika, sprawdź możliwe lądowania
+                if (foundPiece != PieceType.Empty && foundRow != -1 && foundCol != -1)
+                {
+                    for (int i = 1; i < 8; i++)
+                    {
+                        int landingRow = foundRow + (i * rowDir);
+                        int landingCol = foundCol + (i * colDir);
+                        
+                        // Sprawdź granice tablicy
+                        if (landingRow < 0 || landingRow >= 8 || landingCol < 0 || landingCol >= 8)
+                            break;
                             
-                            if (!IsValidPosition(landingRow, landingCol) || !IsDarkSquare(landingRow, landingCol))
-                                break;
-                                
-                            if (IsEmpty(landingRow, landingCol))
-                            {
-                                captures.Add((landingRow, landingCol, foundRow, foundCol));
-                            }
-                            else
-                            {
-                                break;
-                            }
+                        if (!IsDarkSquare(landingRow, landingCol))
+                            break;
+                            
+                        if (IsEmpty(landingRow, landingCol))
+                        {
+                            captures.Add((landingRow, landingCol, foundRow, foundCol));
+                        }
+                        else
+                        {
+                            break; // Zatrzymaj się przy napotkaniu figury
                         }
                     }
                 }
             }
         }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error in AddKingCaptures for ({row},{col}): {ex.Message}");
+    }
+}
+
 
         public List<List<(int, int)>> GetMultipleCaptures(int row, int col, List<(int, int)> previousCaptures = null)
         {

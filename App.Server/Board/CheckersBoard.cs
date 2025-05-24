@@ -57,82 +57,101 @@ namespace App.Server
             InitializeBoard();
         }
 
+        // CheckersBoard.cs
         public CheckersBoard Clone()
         {
-            CheckersBoard clonedBoard = new CheckersBoard();
-            
-            for (int row = 0; row < BOARD_SIZE; row++)
+            try
             {
-                for (int col = 0; col < BOARD_SIZE; col++)
+                CheckersBoard clonedBoard = new CheckersBoard();
+        
+                // Skopiuj stan tablicy
+                for (int row = 0; row < 8; row++)
                 {
-                    clonedBoard.board[row, col] = board[row, col];
+                    for (int col = 0; col < 8; col++)
+                    {
+                        clonedBoard.board[row, col] = this.board[row, col];
+                    }
                 }
-            }
 
-            return clonedBoard;
+                return clonedBoard;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in Clone(): {ex.Message}");
+                return null;
+            }
         }
+
 
         public string SerializeBoard()
         {
-            var boardState = new object[BOARD_SIZE, BOARD_SIZE];
+            var boardState = new List<object>();
 
-            for (int row = 0; row < BOARD_SIZE; row++)
+            for (int row = 0; row < 8; row++)
             {
-                for (int col = 0; col < BOARD_SIZE; col++)
+                for (int col = 0; col < 8; col++)
                 {
                     if (!IsDarkSquare(row, col))
                     {
-                        boardState[row, col] = "invalid";
+                        boardState.Add("invalid");
                         continue;
                     }
 
                     switch (board[row, col])
                     {
                         case PieceType.Empty:
-                            boardState[row, col] = "empty";
+                            boardState.Add("empty");
                             break;
                         case PieceType.WhitePawn:
-                            boardState[row, col] = "white";
+                            boardState.Add("white");
                             break;
                         case PieceType.WhiteKing:
-                            boardState[row, col] = "whiteKing";
+                            boardState.Add("whiteKing");
                             break;
                         case PieceType.BlackPawn:
-                            boardState[row, col] = "black";
+                            boardState.Add("black");
                             break;
                         case PieceType.BlackKing:
-                            boardState[row, col] = "blackKing";
+                            boardState.Add("blackKing");
                             break;
                         default:
-                            boardState[row, col] = "empty";
+                            boardState.Add("empty");
                             break;
                     }
                 }
             }
-
             return JsonSerializer.Serialize(boardState);
         }
 
-        private bool IsDarkSquare(int row, int col)
+        public bool IsDarkSquare(int row, int col)
         {
             return (row + col) % 2 == 1;
         }
+        
 
+        // CheckersBoard.cs
         public PieceType GetPiece(int row, int col)
         {
-            if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE)
+            if (row < 0 || row >= 8 || col < 0 || col >= 8)
+            {
+                Console.WriteLine($"GetPiece: Invalid coordinates ({row}, {col})");
                 return PieceType.Empty;
-            
+            }
+    
             return board[row, col];
         }
 
         public void SetPiece(int row, int col, PieceType piece)
         {
-            if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE)
+            if (row < 0 || row >= 8 || col < 0 || col >= 8)
+            {
+                Console.WriteLine($"SetPiece: Invalid coordinates ({row}, {col})");
                 return;
-            
+            }
+    
             board[row, col] = piece;
         }
+
 
         public bool IsValidPosition(int row, int col)
         {

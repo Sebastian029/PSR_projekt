@@ -1,72 +1,40 @@
 class WebSocketClient {
     constructor(url) {
-        this.url = url;
-        this.connect();
+        this.socket = new WebSocket(url)
+        this.socket.onopen = () => console.log("WebSocket connected")
+        this.socket.onclose = () => console.log("WebSocket disconnected")
+        this.socket.onerror = (error) => console.error("WebSocket error:", error)
     }
 
-    connect() {
-        this.socket = new WebSocket(this.url);
-
-        this.socket.onopen = () => {
-            console.log("Connected to WebSocket server");
-        };
-
-        this.socket.onmessage = (event) => {
-            console.log("Received:", event.data);
-        };
-
-        this.socket.onclose = (event) => {
-            console.log("WebSocket disconnected", event);
-            setTimeout(() => this.connect(), 3000); // Reconnect after 3 seconds
-        };
-
-        this.socket.onerror = (error) => {
-            console.error("WebSocket error:", error);
-        };
+    sendSettings(settings) {
+        const message = {
+            type: "settings",
+            depth: settings.depth,
+            granulation: settings.granulation,
+            isPerformanceTest: settings.isPerformanceTest,
+            isPlayerMode: settings.isPlayerMode
+        }
+        console.log("Sending settings:", message)
+        this.socket.send(JSON.stringify(message))
     }
 
     sendMove(move) {
-        function getFieldNumber(x, y) {
-            return Math.floor(y ) * 4 + Math.floor(x / 2);
+        const moveMessage = {
+            type: "move",
+            FromRow: move.FromRow,
+            FromCol: move.FromCol,
+            ToRow: move.ToRow,
+            ToCol: move.ToCol
         }
-
-        let from = getFieldNumber(move.fromX, move.fromY);
-        let to = getFieldNumber(move.toX, move.toY);
-        let formattedMove = { from, to, type: "move" };
-        
-        
-        console.log("MOVE:", formattedMove);
-
-        if (this.socket.readyState === WebSocket.OPEN) {
-            console.log("Sending move:", JSON.stringify(formattedMove));
-            this.socket.send(JSON.stringify(formattedMove));
-        } else {
-            console.error("WebSocket is not open. Attempting to reconnect...");
-            this.connect();
-            setTimeout(() => this.sendMove(move), 1000);
-        }
+        console.log("Sending move message:", moveMessage)
+        this.socket.send(JSON.stringify(moveMessage))
     }
+
     sendReset() {
-        let from = -1;
-        let to = -1;
-        let formattedMove = { from, to, type: "reset" };
-        this.socket.send(JSON.stringify(formattedMove))
+        const message = { type: "reset" }
+        console.log("Sending reset message")
+        this.socket.send(JSON.stringify(message))
     }
-    sendSettings(settings) {
-        if (this.socket.readyState === WebSocket.OPEN) {
-            this.socket.send(JSON.stringify({
-                type: "settings",
-                depth: settings.depth,
-                granulation: settings.granulation,
-                isPerformanceTest: settings.isPerformanceTest !== null ? Boolean(settings.isPerformanceTest) : false,
-                isPlayerMode: settings.isPlayerMode !== null ? Boolean(settings.isPlayerMode) : false
-            }));
-            console.log("Settings sent:", settings);
-        } else {
-            console.error("WebSocket is not open");
-        }
-    }
-
 }
 
-export default WebSocketClient;
+export default WebSocketClient

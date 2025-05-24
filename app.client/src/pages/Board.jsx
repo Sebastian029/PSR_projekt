@@ -11,6 +11,12 @@ const GameBoard = () => {
         .fill(null)
         .map(() => Array(8).fill("."))
     const [board, setBoard] = useState(initialBoard)
+    const [gameState, setGameState] = useState({
+        isWhiteTurn: true,
+        gameOver: false,
+        winner: null,
+        currentPlayer: "human"
+    })
     const location = useLocation()
     const { depth, granulation, isPerformanceTest, isPlayerMode } = location.state || {}
     const [selectedPiece, setSelectedPiece] = useState(null)
@@ -182,7 +188,7 @@ const GameBoard = () => {
                 const data = JSON.parse(event.data)
                 console.log("Parsed response:", data)
 
-                // Handle board
+                // Handle board data
                 if (data.Board) {
                     let boardArray
 
@@ -201,6 +207,24 @@ const GameBoard = () => {
                     }
 
                     updateBoardFromServer(boardArray)
+                }
+
+                // Update game state
+                setGameState({
+                    isWhiteTurn: data.IsWhiteTurn !== undefined ? data.IsWhiteTurn : true,
+                    gameOver: data.GameOver !== undefined ? data.GameOver : false,
+                    winner: data.Winner || null,
+                    currentPlayer: data.CurrentPlayer || "human"
+                })
+
+                // Clear selection if it's not player's turn
+                if (data.CurrentPlayer === "computer" || !data.IsWhiteTurn) {
+                    setSelectedPiece(null)
+                }
+
+                // Handle error messages
+                if (data.error) {
+                    console.error("Server error:", data.error)
                 }
 
                 // Handle settings confirmation
@@ -234,55 +258,85 @@ const GameBoard = () => {
         const newBoard = Array(8)
             .fill(null)
             .map(() => Array(8).fill("."))
-        const playablePositions = []
 
-        for (let row = 0; row < 8; row++) {
-            for (let col = 0; col < 8; col++) {
-                if ((row + col) % 2 === 1) {
-                    playablePositions.push({ row, col })
-                }
+        // Iterate through the 64-element array (8x8 board)
+        for (let i = 0; i < boardState.length && i < 64; i++) {
+            const row = Math.floor(i / 8)
+            const col = i % 8
+            const square = boardState[i]
+
+            if (square === "invalid") {
+                // Light squares - keep as "."
+                newBoard[row][col] = "."
+            } else if (square === "empty") {
+                newBoard[row][col] = "."
+            } else if (square === "black") {
+                newBoard[row][col] = "B"
+            } else if (square === "white") {
+                newBoard[row][col] = "W"
+            } else if (square === "blackKing") {
+                newBoard[row][col] = "BK"
+            } else if (square === "whiteKing") {
+                newBoard[row][col] = "WK"
             }
         }
-
-        boardState.forEach((square, index) => {
-            if (index < playablePositions.length) {
-                const { row, col } = playablePositions[index]
-                if (square === "empty") {
-                    newBoard[row][col] = "."
-                } else if (square === "black") {
-                    newBoard[row][col] = "B"
-                } else if (square === "white") {
-                    newBoard[row][col] = "W"
-                } else if (square === "blackKing") {
-                    newBoard[row][col] = "BK"
-                } else if (square === "whiteKing") {
-                    newBoard[row][col] = "WK"
-                }
-            }
-        })
 
         setBoard(newBoard)
     }
 
     const handleCellClick = (rowIndex, colIndex) => {
+        // Only allow moves on dark squares
         if ((rowIndex + colIndex) % 2 !== 1) return
+
+        // Don't allow moves if game is over or it's computer's turn
+        if (gameState.gameOver || gameState.currentPlayer === "computer") return
 
         if (selectedPiece) {
             const { row, col } = selectedPiece
-            sendMove(col, row, colIndex, rowIndex)
+            sendMove(row, col, rowIndex, colIndex)
             setSelectedPiece(null)
         } else if (board[rowIndex][colIndex] !== ".") {
-            setSelectedPiece({ row: rowIndex, col: colIndex })
+            // Only allow selecting pieces of the current player
+            const piece = board[rowIndex][colIndex]
+            const isWhitePiece = piece === "W" || piece === "WK"
+
+            if (gameState.isWhiteTurn === isWhitePiece) {
+                setSelectedPiece({ row: rowIndex, col: colIndex })
+            }
         }
     }
 
-    const sendMove = (fromX, fromY, toX, toY) => {
-        const move = { fromX, fromY, toX, toY }
+    const sendMove = (fromRow, fromCol, toRow, toCol) => {
+        const move = {
+            type: "move",
+            FromRow: fromRow,
+            FromCol: fromCol,
+            ToRow: toRow,
+            ToCol: toCol
+        }
+        console.log("Sending move:", move)
         wsClient.sendMove(move)
     }
 
     const sendReset = () => {
         wsClient.sendReset()
+        setSelectedPiece(null)
+    }
+
+    const getStatusMessage = () => {
+        if (gameState.gameOver) {
+            return `Game Over! ${gameState.winner === "white" ? "White" : "Black"} wins!`
+        }
+
+        if (selectedPiece) {
+            return "Piece selected! Click on a valid square to move."
+        }
+
+        if (gameState.currentPlayer === "computer") {
+            return "Computer is thinking..."
+        }
+
+        return `${gameState.isWhiteTurn ? "White" : "Black"}'s turn`
     }
 
     return (
@@ -329,7 +383,7 @@ const GameBoard = () => {
                     )}
                 </div>
                 <div style={styles.statusMessage}>
-                    {selectedPiece ? "Piece selected! Click on a valid square to move." : "Select a piece to move"}
+                    {getStatusMessage()}
                 </div>
                 <div style={styles.buttonContainer}>
                     <button style={styles.button} onClick={() => sendReset()}>

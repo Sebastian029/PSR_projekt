@@ -1,8 +1,10 @@
-﻿using App.Client;
+﻿// CheckersAI.cs
+using App.Client;
 using App.Server;
 using Grpc.Core;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 public class CheckersAI
 {
@@ -21,8 +23,7 @@ public class CheckersAI
         _captureSimulator = new CaptureSimulator();
         _serverAddresses = serverAddresses ?? new List<string>();
         _granulation = granulation;
-        
-        // Initialize the distributor if server addresses are provided
+
         if (_serverAddresses.Count > 0)
         {
             _minimaxDistributor = new MinimaxDistributor(_serverAddresses);
@@ -33,39 +34,53 @@ public class CheckersAI
             Console.WriteLine("NO SERVER AVAILABLE");
         }
 
-        // Create Minimax instance with the correct parameter order
-        _minimax = new Minimax(depth,granulation, _evaluator, _minimaxDistributor);
+        _minimax = new Minimax(depth, granulation, _evaluator, _minimaxDistributor);
     }
-    
-    public (int fromField, int toField) CalculateOptimalMove(CheckersBoard board, bool isWhiteTurn)
-    {
-        var captures = _moveGenerator.GetMandatoryCaptures(board, isWhiteTurn);
-        if (captures.Count > 0)
-        {
-            return _minimax.GetBestMove(board, captures, isWhiteTurn);
-        }
 
-        var validMoves = _moveGenerator.GetAllValidMoves(board, isWhiteTurn);
-        return _minimax.GetBestMove(board, validMoves, isWhiteTurn);
+    // CheckersAI.cs
+    public (int fromRow, int fromCol, int toRow, int toCol) CalculateOptimalMove(CheckersBoard board, bool isWhiteTurn)
+    {
+        try
+        {
+            var captures = _moveGenerator.GetMandatoryCaptures(board, isWhiteTurn);
+            if (captures.Count > 0)
+            {
+                var (fromRow, fromCol, toRow, toCol) = _minimax.GetBestMove(board, captures, isWhiteTurn);
+                return (fromRow, fromCol, toRow, toCol);
+            }
+
+            var validMoves = _moveGenerator.GetAllValidMoves(board, isWhiteTurn);
+            if (validMoves.Count == 0)
+            {
+                Console.WriteLine("No valid moves available");
+                return (-1, -1, -1, -1);
+            }
+
+            var (fromRow2, fromCol2, toRow2, toCol2) = _minimax.GetBestMove(board, validMoves, isWhiteTurn);
+            return (fromRow2, fromCol2, toRow2, toCol2);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in CalculateOptimalMove: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            return (-1, -1, -1, -1);
+        }
     }
+
 
     public bool IsGameOver(CheckersBoard board) =>
         !_moveGenerator.HasValidMoves(board, true) || !_moveGenerator.HasValidMoves(board, false);
 
     public bool WhiteWon(CheckersBoard board) =>
         _moveGenerator.HasValidMoves(board, true) && !_moveGenerator.HasValidMoves(board, false);
-    
-    // Update method with only depth, granulation, and addresses
+
     public void updateSettings(int depth, int granulation, List<string> serverAddresses = null)
     {
         _granulation = granulation;
-        
-        // Update server addresses if provided
+
         if (serverAddresses != null)
         {
             _serverAddresses = serverAddresses;
-            
-            // Recreate the distributor if there are server addresses
             if (_serverAddresses.Count > 0)
             {
                 _minimaxDistributor = new MinimaxDistributor(_serverAddresses);
@@ -77,10 +92,10 @@ public class CheckersAI
                 Console.WriteLine("NO SERVER AVAILABLE");
             }
         }
-        
-        _minimax = new Minimax(depth,granulation, _evaluator, _minimaxDistributor);
+
+        _minimax = new Minimax(depth, granulation, _evaluator, _minimaxDistributor);
     }
-    
+
     public void updateSettings(int depth, int granulation)
     {
         updateSettings(depth, granulation, null);

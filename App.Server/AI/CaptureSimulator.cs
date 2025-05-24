@@ -1,28 +1,56 @@
-﻿using App.Server;
-
-
+﻿// CaptureSimulator.cs
+using App.Server;
+using System.Linq;
 
 public class CaptureSimulator
 {
-    public void SimulateCapture(CheckersBoard board, int from, int to)
+    public void SimulateCapture(CheckersBoard board, int fromRow, int fromCol, int toRow, int toCol)
     {
-        byte piece = board.GetField(from);
-        var capture = board.GetValidCaptures(from).FirstOrDefault(c => c.Item1 == to);
-        if (capture.Item1 != to) return;
+        PieceType piece = board.GetPiece(fromRow, fromCol);
 
-        board.SetField(from, (byte)PieceType.Empty);
-        board.SetField(capture.Item2, (byte)PieceType.Empty);
-        board.SetField(to, piece);
+        var captures = board.GetValidCaptures(fromRow, fromCol);
+        var capture = captures.FirstOrDefault(c => c.toRow == toRow && c.toCol == toCol);
+        if (capture == default) return;
 
-        int promotionRow = PieceUtils.IsWhite(piece) ? 0 : 7;
-        if (!PieceUtils.IsKing(piece) && to / 4 == promotionRow)
+        board.SetPiece(fromRow, fromCol, PieceType.Empty);
+        board.SetPiece(capture.capturedRow, capture.capturedCol, PieceType.Empty);
+        board.SetPiece(toRow, toCol, piece);
+
+        // Sprawdź promocję do damki
+        if (piece == PieceType.WhitePawn && toRow == 0)
         {
-            board.SetField(to, (byte)(piece + 1));
+            board.SetPiece(toRow, toCol, PieceType.WhiteKing);
+        }
+        else if (piece == PieceType.BlackPawn && toRow == 7)
+        {
+            board.SetPiece(toRow, toCol, PieceType.BlackKing);
         }
     }
 
-    public void SimulateCapture(CheckersBoard simulatedBoard, object from, object to)
+    // Przeciążenie dla kompatybilności z oryginalnym interfejsem
+    public void SimulateCapture(CheckersBoard board, int from, int to)
     {
-        throw new NotImplementedException();
+        var (fromRow, fromCol) = ConvertFromIndex32(from);
+        var (toRow, toCol) = ConvertFromIndex32(to);
+        SimulateCapture(board, fromRow, fromCol, toRow, toCol);
+    }
+
+    public void SimulateCapture(CheckersBoard board, object from, object to)
+    {
+        if (from is int fromIndex && to is int toIndex)
+        {
+            SimulateCapture(board, fromIndex, toIndex);
+        }
+        else if (from is (int fromRow, int fromCol) && to is (int toRow, int toCol))
+        {
+            SimulateCapture(board, fromRow, fromCol, toRow, toCol);
+        }
+    }
+
+    private (int row, int col) ConvertFromIndex32(int index32)
+    {
+        int row = index32 / 4;
+        int col = (index32 % 4) * 2 + (row % 2 == 0 ? 1 : 0);
+        return (row, col);
     }
 }
