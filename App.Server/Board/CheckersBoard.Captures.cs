@@ -1,4 +1,5 @@
-﻿using System;
+﻿// CheckersBoard.Captures.cs
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -6,267 +7,172 @@ namespace App.Server
 {
     public partial class CheckersBoard
     {
-        public List<(int, int)> GetValidCaptures(int index)
+        public List<(int toRow, int toCol, int capturedRow, int capturedCol)> GetValidCaptures(int row, int col)
         {
-            List<(int, int)> captures = new List<(int, int)>();
-            byte piece = GetField(index);
-            if (piece == (byte)PieceType.Empty) return captures;
+            List<(int, int, int, int)> captures = new List<(int, int, int, int)>();
+            PieceType piece = GetPiece(row, col);
+            
+            if (piece == PieceType.Empty || !IsDarkSquare(row, col)) 
+                return captures;
 
-            int row = index / 4;
-            bool isEvenRow = (row % 2 == 0);
-
-            // For all pieces (white, black and kings)
-            int[] captureDirections = isEvenRow
-                ? new int[] { -7, -9, 7, 9 }
-                : new int[] { -9, -7, 9, 7 };
-                
-            if (piece == (byte)PieceType.BlackPawn || piece == (byte)PieceType.WhitePawn)
+            if (piece == PieceType.WhitePawn)
             {
-                foreach (var dir in captureDirections)
-                {
-                    int targetIndex = index + dir;
-                    if (targetIndex >= 0 && targetIndex < 32)
-                    {
-                        // Check if target is empty
-                        if (GetField(targetIndex) == (byte)PieceType.Empty)
-                        {
-                            int middleIndex = GetMiddleIndex(index, targetIndex);
-                            if (middleIndex >= 0 && middleIndex < 32)
-                            {
-                                byte capturedPiece = GetField(middleIndex);
-                                if (capturedPiece != (byte)PieceType.Empty && !IsSameColor(piece, capturedPiece))
-                                {
-                                    // Check if the move stays on the board
-                                    int col = index % 4;
-                                    if ((col == 0 && (dir == -9 || dir == 7)) || (col == 3 && (dir == -7 || dir == 9)))
-                                        continue;
-
-                                    // Pawns can capture in both directions
-                                    captures.Add((targetIndex, middleIndex));
-                                }
-                            }
-                        }
-                    }
-                }
+                AddPawnCaptures(captures, row, col, -1, piece);
             }
-            else // For kings
+            else if (piece == PieceType.BlackPawn)
             {
-                // Define the four diagonal directions based on row parity
-                int[] upLeftOffset = isEvenRow ? new int[] { -4 } : new int[] { -5 };
-                int[] upRightOffset = isEvenRow ? new int[] { -3 } : new int[] { -4 };
-                int[] downLeftOffset = isEvenRow ? new int[] { 4 } : new int[] { 3 };
-                int[] downRightOffset = isEvenRow ? new int[] { 5 } : new int[] { 4 };
-                
-                // Pairs of direction and corresponding offset
-                var directions = new[] 
-                {
-                    (Direction: "UpLeft", Offsets: upLeftOffset, NextOffsets: isEvenRow ? -5 : -4),
-                    (Direction: "UpRight", Offsets: upRightOffset, NextOffsets: isEvenRow ? -4 : -3),
-                    (Direction: "DownLeft", Offsets: downLeftOffset, NextOffsets: isEvenRow ? 3 : 4),
-                    (Direction: "DownRight", Offsets: downRightOffset, NextOffsets: isEvenRow ? 4 : 5)
-                };
-
-                List<int> moves = new List<int>();
-
-                // Process each direction
-                foreach (var direction in directions)
-                {
-                    int offset = direction.Offsets[0];
-                    int nextOffset = direction.NextOffsets;
-                    int currentIndex = index;
-                    int found = -1;
-
-                    // Continue in this direction until we hit a boundary or a piece
-                    while (true)
-                    {
-                        // Calculate row parity for the current position
-                        bool currentParity = (currentIndex / 4) % 2 == 0;
-                        int nextIndex;
-                        
-                        // Determine next index based on parity and direction
-                        if (direction.Direction == "UpLeft")
-                        {
-                            if (currentParity && Math.Abs(currentIndex % 4 - (currentIndex - 4) % 4) <= 1)
-                            {
-                                nextIndex = currentIndex - 4;
-                                nextOffset = -5;
-                            }
-                            else if (!currentParity && Math.Abs(currentIndex % 4 - (currentIndex - 5) % 4) <= 1)
-                            {
-                                nextIndex = currentIndex - 5;
-                                nextOffset = -4;
-                            }
-                            else break;
-                        }
-                        else if (direction.Direction == "UpRight")
-                        {
-                            if (currentParity && Math.Abs(currentIndex % 4 - (currentIndex - 3) % 4) <= 1)
-                            {
-                                nextIndex = currentIndex - 3;
-                                nextOffset = -4;
-                            }
-                            else if (!currentParity && Math.Abs(currentIndex % 4 - (currentIndex - 4) % 4) <= 1)
-                            {
-                                nextIndex = currentIndex - 4;
-                                nextOffset = -3;
-                            }
-                            else break;
-                        }
-                        else if (direction.Direction == "DownLeft")
-                        {
-                            if (currentParity && Math.Abs(currentIndex % 4 - (currentIndex + 4) % 4) <= 1)
-                            {
-                                nextIndex = currentIndex + 4;
-                                nextOffset = 3;
-                            }
-                            else if (!currentParity && Math.Abs(currentIndex % 4 - (currentIndex + 3) % 4) <= 1)
-                            {
-                                nextIndex = currentIndex + 3;
-                                nextOffset = 4;
-                            }
-                            else break;
-                        }
-                        else // DownRight
-                        {
-                            if (currentParity && Math.Abs(currentIndex % 4 - (currentIndex + 5) % 4) <= 1)
-                            {
-                                nextIndex = currentIndex + 5;
-                                nextOffset = 4;
-                            }
-                            else if (!currentParity && Math.Abs(currentIndex % 4 - (currentIndex + 4) % 4) <= 1)
-                            {
-                                nextIndex = currentIndex + 4;
-                                nextOffset = 5;
-                            }
-                            else break;
-                        }
-                        
-                        // Check bounds
-                        if (nextIndex < 0 || nextIndex >= 32)
-                            break;
-                            
-                        // Check if square is occupied
-                        byte pieceAtNextIndex = GetField(nextIndex);
-                        
-                        if (pieceAtNextIndex == (byte)PieceType.Empty)
-                        {
-                            // Empty square - add to normal moves
-                            moves.Add(nextIndex);
-                            currentIndex = nextIndex;
-                            continue;
-                        }
-                        
-                        // Not empty - check for capture opportunity
-                        if (!IsSameColor(piece, pieceAtNextIndex) && found < 0)
-                        {
-                            // Calculate the landing square after the capture
-                            bool nextParity = (nextIndex / 4) % 2 == 0;
-                            int captureIndex = -1;
-                            
-                            if (direction.Direction == "UpLeft")
-                            {
-                                captureIndex = nextParity ? nextIndex - 4 : nextIndex - 5;
-                            }
-                            else if (direction.Direction == "UpRight")
-                            {
-                                captureIndex = nextParity ? nextIndex - 3 : nextIndex - 4;
-                            }
-                            else if (direction.Direction == "DownLeft")
-                            {
-                                captureIndex = nextParity ? nextIndex + 4 : nextIndex + 3;
-                            }
-                            else // DownRight
-                            {
-                                captureIndex = nextParity ? nextIndex + 5 : nextIndex + 4;
-                            }
-                            
-                            // Make sure the capture landing spot is valid
-                            if (captureIndex >= 0 && captureIndex < 32 && GetField(captureIndex) == (byte)PieceType.Empty)
-                            {
-                                // Check if the landing square is in the correct direction (column check)
-                                int nextCol = nextIndex % 4;
-                                int captureCol = captureIndex % 4;
-                                
-                                if (Math.Abs(nextCol - captureCol) <= 1)
-                                {
-                                    found = captureIndex;
-                                    captures.Add((captureIndex, nextIndex)); // Add capture: (target, captured piece)
-                                }
-                            }
-                        }
-                        
-                        // We found a piece, so stop exploring this direction
-                        break;
-                    }
-                }
+                AddPawnCaptures(captures, row, col, 1, piece);
+            }
+            else if (piece == PieceType.WhiteKing || piece == PieceType.BlackKing)
+            {
+                AddKingCaptures(captures, row, col, piece);
             }
 
             return captures;
         }
 
-        public List<int> GetMultipleCaptures(int index, List<int> previousCaptures = null)
+        private void AddPawnCaptures(List<(int, int, int, int)> captures, int row, int col, int direction, PieceType piece)
         {
-            List<int> multipleCaptures = new List<int>();
-            byte piece = GetField(index);
-            if (piece == (byte)PieceType.Empty) return multipleCaptures;
-
-            previousCaptures = previousCaptures ?? new List<int>();
-
-            var initialCaptures = GetValidCaptures(index);
-
-            foreach (var (capture, pieceIndex) in initialCaptures)
+            int[] colOffsets = { -1, 1 };
+            
+            foreach (int colOffset in colOffsets)
             {
-                // Simulate move
-                byte originalPiece = GetField(index);
-                SetField(index, (byte)PieceType.Empty);
-                byte capturedPiece = GetField(pieceIndex);
-                SetField(pieceIndex, (byte)PieceType.Empty);
-                SetField(capture, originalPiece);
-
-                // Check if piece should be promoted to king
-                byte currentPiece = originalPiece;
-                if (originalPiece == (byte)PieceType.WhitePawn && capture < 4)
+                int capturedRow = row + direction;
+                int capturedCol = col + colOffset;
+                int landingRow = row + (2 * direction);
+                int landingCol = col + (2 * colOffset);
+                
+                if (IsValidPosition(capturedRow, capturedCol) && IsValidPosition(landingRow, landingCol) &&
+                    IsDarkSquare(capturedRow, capturedCol) && IsDarkSquare(landingRow, landingCol))
                 {
-                    SetField(capture, (byte)PieceType.WhiteKing);
-                    currentPiece = (byte)PieceType.WhiteKing;
+                    PieceType capturedPiece = GetPiece(capturedRow, capturedCol);
+                    
+                    if (capturedPiece != PieceType.Empty && !IsSameColor(piece, capturedPiece) && 
+                        IsEmpty(landingRow, landingCol))
+                    {
+                        captures.Add((landingRow, landingCol, capturedRow, capturedCol));
+                    }
                 }
-                else if (originalPiece == (byte)PieceType.BlackPawn && capture >= 28)
+            }
+        }
+
+        private void AddKingCaptures(List<(int, int, int, int)> captures, int row, int col, PieceType piece)
+        {
+            int[] directions = { -1, 1 };
+            
+            foreach (int rowDir in directions)
+            {
+                foreach (int colDir in directions)
                 {
-                    SetField(capture, (byte)PieceType.BlackKing);
-                    currentPiece = (byte)PieceType.BlackKing;
+                    PieceType foundPiece = PieceType.Empty;
+                    int foundRow = -1, foundCol = -1;
+                    
+                    // Szukaj pierwszej figury w tym kierunku
+                    for (int i = 1; i < BOARD_SIZE; i++)
+                    {
+                        int checkRow = row + (i * rowDir);
+                        int checkCol = col + (i * colDir);
+                        
+                        if (!IsValidPosition(checkRow, checkCol) || !IsDarkSquare(checkRow, checkCol))
+                            break;
+                            
+                        PieceType currentPiece = GetPiece(checkRow, checkCol);
+                        if (currentPiece != PieceType.Empty)
+                        {
+                            if (!IsSameColor(piece, currentPiece))
+                            {
+                                foundPiece = currentPiece;
+                                foundRow = checkRow;
+                                foundCol = checkCol;
+                            }
+                            break;
+                        }
+                    }
+                    
+                    // Jeśli znaleziono figurę przeciwnika, sprawdź możliwe lądowania
+                    if (foundPiece != PieceType.Empty)
+                    {
+                        for (int i = 1; i < BOARD_SIZE; i++)
+                        {
+                            int landingRow = foundRow + (i * rowDir);
+                            int landingCol = foundCol + (i * colDir);
+                            
+                            if (!IsValidPosition(landingRow, landingCol) || !IsDarkSquare(landingRow, landingCol))
+                                break;
+                                
+                            if (IsEmpty(landingRow, landingCol))
+                            {
+                                captures.Add((landingRow, landingCol, foundRow, foundCol));
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        public List<List<(int, int)>> GetMultipleCaptures(int row, int col, List<(int, int)> previousCaptures = null)
+        {
+            List<List<(int, int)>> multipleCaptures = new List<List<(int, int)>>();
+            PieceType piece = GetPiece(row, col);
+            
+            if (piece == PieceType.Empty) return multipleCaptures;
+
+            previousCaptures = previousCaptures ?? new List<(int, int)>();
+            var initialCaptures = GetValidCaptures(row, col);
+
+            foreach (var (toRow, toCol, capturedRow, capturedCol) in initialCaptures)
+            {
+                // Symuluj ruch
+                PieceType originalPiece = GetPiece(row, col);
+                PieceType capturedPiece = GetPiece(capturedRow, capturedCol);
+                
+                SetPiece(row, col, PieceType.Empty);
+                SetPiece(capturedRow, capturedCol, PieceType.Empty);
+                SetPiece(toRow, toCol, originalPiece);
+
+                // Sprawdź promocję
+                PieceType currentPiece = originalPiece;
+                if (originalPiece == PieceType.WhitePawn && toRow == 0)
+                {
+                    SetPiece(toRow, toCol, PieceType.WhiteKing);
+                    currentPiece = PieceType.WhiteKing;
+                }
+                else if (originalPiece == PieceType.BlackPawn && toRow == 7)
+                {
+                    SetPiece(toRow, toCol, PieceType.BlackKing);
+                    currentPiece = PieceType.BlackKing;
                 }
 
-                // Check for further captures
-                var furtherCaptures = GetValidCaptures(capture);
+                // Sprawdź dalsze bicia
+                var furtherCaptures = GetValidCaptures(toRow, toCol);
                 if (furtherCaptures.Count > 0)
                 {
-                    foreach (var (furtherCapture, tmp) in furtherCaptures)
+                    foreach (var (furtherToRow, furtherToCol, _, _) in furtherCaptures)
                     {
-                        List<int> sequence = new List<int>(previousCaptures) { capture, furtherCapture };
-                        multipleCaptures.AddRange(sequence);
-
-                        // Recursively check for deeper captures
-                        var deeperCaptures = GetMultipleCaptures(furtherCapture, sequence);
+                        List<(int, int)> sequence = new List<(int, int)>(previousCaptures) { (toRow, toCol), (furtherToRow, furtherToCol) };
+                        multipleCaptures.Add(sequence);
+                        
+                        // Rekurencyjnie sprawdź głębsze bicia
+                        var deeperCaptures = GetMultipleCaptures(furtherToRow, furtherToCol, sequence);
                         multipleCaptures.AddRange(deeperCaptures);
                     }
                 }
                 else
                 {
-                    multipleCaptures.Add(capture);
+                    multipleCaptures.Add(new List<(int, int)> { (toRow, toCol) });
                 }
 
-                // Undo simulation
-                SetField(capture, (byte)PieceType.Empty);
-                SetField(pieceIndex, capturedPiece);
-                SetField(index, originalPiece);
+                // Cofnij symulację
+                SetPiece(toRow, toCol, PieceType.Empty);
+                SetPiece(capturedRow, capturedCol, capturedPiece);
+                SetPiece(row, col, originalPiece);
             }
 
             return multipleCaptures.Distinct().ToList();
-        }
-
-        public void MovePiece(object from, object to)
-        {
-            throw new NotImplementedException();
         }
     }
 }

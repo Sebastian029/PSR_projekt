@@ -1,4 +1,5 @@
-﻿using System;
+﻿// CheckersBoard.MovementLogic.cs
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -6,48 +7,46 @@ namespace App.Server
 {
     public partial class CheckersBoard
     {
-        public void MovePiece(int from, int to)
+        public void MovePiece(int fromRow, int fromCol, int toRow, int toCol)
         {
-            byte piece = GetField(from);
-            SetField(from, (byte)PieceType.Empty);
-            SetField(to, piece);
+            PieceType piece = GetPiece(fromRow, fromCol);
+            SetPiece(fromRow, fromCol, PieceType.Empty);
+            SetPiece(toRow, toCol, piece);
 
-            // Check if a capture was made
-            if (Math.Abs(to - from) > 5) // Capture (jump of more than 5 squares)
+            // Sprawdź czy nastąpiło bicie
+            if (Math.Abs(toRow - fromRow) == 2)
             {
-                int middleIndex = GetMiddleIndex(from, to);
-                SetField(middleIndex, (byte)PieceType.Empty);
+                int middleRow = (fromRow + toRow) / 2;
+                int middleCol = (fromCol + toCol) / 2;
+                SetPiece(middleRow, middleCol, PieceType.Empty);
             }
 
-            // Promote to king
-            if (piece == (byte)PieceType.WhitePawn && to < 4)
+            // Promuj do damki
+            if (piece == PieceType.WhitePawn && toRow == 0)
             {
-                SetField(to, (byte)PieceType.WhiteKing);
+                SetPiece(toRow, toCol, PieceType.WhiteKing);
             }
-            else if (piece == (byte)PieceType.BlackPawn && to >= 28)
+            else if (piece == PieceType.BlackPawn && toRow == 7)
             {
-                SetField(to, (byte)PieceType.BlackKing);
+                SetPiece(toRow, toCol, PieceType.BlackKing);
             }
         }
 
-        private bool IsSameColor(byte piece1, byte piece2)
+        public void MovePiece(object from, object to)
         {
-            return ((piece1 == (byte)PieceType.WhitePawn || piece1 == (byte)PieceType.WhiteKing) &&
-                    (piece2 == (byte)PieceType.WhitePawn || piece2 == (byte)PieceType.WhiteKing)) ||
-                   ((piece1 == (byte)PieceType.BlackPawn || piece1 == (byte)PieceType.BlackKing) &&
-                    (piece2 == (byte)PieceType.BlackPawn || piece2 == (byte)PieceType.BlackKing));
+            // Kompatybilność z oryginalnym interfejsem
+            if (from is (int fromRow, int fromCol) && to is (int toRow, int toCol))
+            {
+                MovePiece(fromRow, fromCol, toRow, toCol);
+            }
         }
 
-        public int GetMiddleIndex(int from, int to)
+        private bool IsSameColor(PieceType piece1, PieceType piece2)
         {
-            int row = from / 4;
-            int check = row % 2;
-
-            int middleIndex = check == 0
-                ? (int)Math.Floor((double)(to + from + 1) / 2)
-                : (int)Math.Floor((double)(to + from) / 2);
-
-            return middleIndex;
+            return ((piece1 == PieceType.WhitePawn || piece1 == PieceType.WhiteKing) &&
+                    (piece2 == PieceType.WhitePawn || piece2 == PieceType.WhiteKing)) ||
+                   ((piece1 == PieceType.BlackPawn || piece1 == PieceType.BlackKing) &&
+                    (piece2 == PieceType.BlackPawn || piece2 == PieceType.BlackKing));
         }
     }
 }
