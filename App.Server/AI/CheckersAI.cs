@@ -37,8 +37,7 @@ public class CheckersAI
         _minimax = new Minimax(depth, granulation, _evaluator, _minimaxDistributor);
     }
 
-    // CheckersAI.cs
-    public (int fromRow, int fromCol, int toRow, int toCol) CalculateOptimalMove(CheckersBoard board, bool isWhiteTurn)
+     public (int fromRow, int fromCol, int toRow, int toCol) CalculateOptimalMove(CheckersBoard board, bool isWhiteTurn)
     {
         try
         {
@@ -61,11 +60,62 @@ public class CheckersAI
         }
         catch (Exception ex)
         {
-           // Console.WriteLine($"Error in CalculateOptimalMove: {ex.Message}");
-           // Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            Console.WriteLine($"Error in CalculateOptimalMove: {ex.Message}");
             return (-1, -1, -1, -1);
         }
     }
+
+    // NOWA METODA: Oblicz optymalny ruch z wykluczeniem określonych ruchów
+    public (int fromRow, int fromCol, int toRow, int toCol) CalculateOptimalMoveWithExclusions(
+        CheckersBoard board, bool isWhiteTurn, HashSet<(int, int, int, int)> excludedMoves)
+    {
+        try
+        {
+            var captures = _moveGenerator.GetMandatoryCaptures(board, isWhiteTurn);
+            if (captures.Count > 0)
+            {
+                // Filtruj wykluczone ruchy z bić
+                var filteredCaptures = new Dictionary<(int row, int col), List<(int row, int col)>>();
+                foreach (var kvp in captures)
+                {
+                    var filteredTargets = kvp.Value.Where(target => 
+                        !excludedMoves.Contains((kvp.Key.row, kvp.Key.col, target.row, target.col))
+                    ).ToList();
+                    
+                    if (filteredTargets.Count > 0)
+                    {
+                        filteredCaptures[kvp.Key] = filteredTargets;
+                    }
+                }
+
+                if (filteredCaptures.Count > 0)
+                {
+                    var (fromRow, fromCol, toRow, toCol) = _minimax.GetBestMove(board, filteredCaptures, isWhiteTurn);
+                    return (fromRow, fromCol, toRow, toCol);
+                }
+            }
+
+            // Filtruj wykluczone ruchy ze zwykłych ruchów
+            var validMoves = _moveGenerator.GetAllValidMoves(board, isWhiteTurn)
+                .Where(move => !excludedMoves.Contains(move))
+                .ToList();
+
+            if (validMoves.Count == 0)
+            {
+                Console.WriteLine("No valid moves available after exclusions");
+                return (-1, -1, -1, -1);
+            }
+
+            var (fromRow2, fromCol2, toRow2, toCol2) = _minimax.GetBestMove(board, validMoves, isWhiteTurn);
+            return (fromRow2, fromCol2, toRow2, toCol2);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in CalculateOptimalMoveWithExclusions: {ex.Message}");
+            return (-1, -1, -1, -1);
+        }
+    }
+
 
 
     public bool IsGameOver(CheckersBoard board) =>

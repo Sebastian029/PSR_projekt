@@ -182,79 +182,79 @@ namespace App.Server.WebSocketHandlers
             }
         }
 
-
-
-        // CheckersWebSocketHandler.cs - poprawiona metoda ProcessComputerTurn
+// CheckersWebSocketHandler.cs - poprawiona metoda ProcessComputerTurn
+// CheckersWebSocketHandler.cs - poprawiona metoda ProcessComputerTurn
 private async Task ProcessComputerTurn(WebSocket webSocket)
 {
-    int maxMoves = 50; // Zabezpieczenie przed nieskończoną pętlą
-    int moveCount = 0;
+    // NOWE: Sprawdź czy gra się już skończyła
+    if (_game.IsGameOver)
+    {
+        Console.WriteLine($"Game is already over. Winner: {_game.Winner}");
+        await SendGameState(webSocket, false);
+        return;
+    }
 
-    while (moveCount < maxMoves)
+    // NOWE: Sprawdź warunki remisu przed rozpoczęciem tury
+    if (_game.IsDrawGame)
+    {
+        Console.WriteLine($"Game ended in draw: {_game.DrawReason}");
+        await SendGameState(webSocket, false);
+        return;
+    }
+
+    int maxAttempts = 5; // Zmniejsz liczbę prób
+    int attempts = 0;
+    HashSet<(int, int, int, int)> blockedMoves = new HashSet<(int, int, int, int)>();
+
+    while (attempts < maxAttempts && !_game.IsGameOver)
     {
         var aiMove = _game.GetAIMove();
         if (aiMove.fromRow == -1)
         {
-            Console.WriteLine("No AI move available");
+            Console.WriteLine("No AI move available - checking for stalemate");
+            _game.CheckForStalemate();
             break;
         }
 
-        Console.WriteLine($"AI attempting move {moveCount + 1}: ({aiMove.fromRow},{aiMove.fromCol}) to ({aiMove.toRow},{aiMove.toCol})");
-        
-        bool success = _game.PlayMove(aiMove.fromRow, aiMove.fromCol, aiMove.toRow, aiMove.toCol);
-        if (!success)
+        if (blockedMoves.Contains(aiMove))
         {
-            Console.WriteLine("AI move failed");
-            break;
-        }
-
-        await SendGameState(webSocket, true);
-        
-        // ZABEZPIECZENIE: Sprawdź czy gra się nie zapętla
-        if (_game.MustCaptureFrom.HasValue && !_game.IsWhiteTurn)
-        {
-            var captures = _game.GetAllPossibleCaptures();
-            if (captures.TryGetValue(_game.MustCaptureFrom.Value, out var targets) && targets.Count > 0)
+            Console.WriteLine($"Move ({aiMove.fromRow},{aiMove.fromCol}) to ({aiMove.toRow},{aiMove.toCol}) was already blocked");
+            var alternativeMove = _game.GetAlternativeAIMove(blockedMoves);
+            if (alternativeMove.fromRow == -1)
             {
-                var captureTarget = targets[0];
-                Console.WriteLine($"Continuing capture sequence: ({_game.MustCaptureFrom.Value.row},{_game.MustCaptureFrom.Value.col}) to ({captureTarget.row},{captureTarget.col})");
-                
-                success = _game.PlayMove(_game.MustCaptureFrom.Value.row, _game.MustCaptureFrom.Value.col, 
-                                        captureTarget.row, captureTarget.col);
-                if (!success)
-                {
-                    Console.WriteLine("Capture sequence move failed, breaking");
-                    break;
-                }
-                
-                await SendGameState(webSocket, true);
-                if (!_game.IsPerformanceTest)
-                    await Task.Delay(300);
-                    
-                moveCount++;
-            }
-            else
-            {
-                Console.WriteLine("No valid captures available, breaking sequence");
+                Console.WriteLine("No alternative moves available - possible stalemate");
+                _game.CheckForStalemate();
                 break;
             }
+            aiMove = alternativeMove;
+        }
+
+        Console.WriteLine($"AI attempting move {attempts + 1}: ({aiMove.fromRow},{aiMove.fromCol}) to ({aiMove.toRow},{aiMove.toCol})");
+        
+        bool success = _game.PlayMove(aiMove.fromRow, aiMove.fromCol, aiMove.toRow, aiMove.toCol);
+        if (success)
+        {
+            Console.WriteLine("AI move successful");
+            break;
         }
         else
         {
-            Console.WriteLine("Computer turn completed");
-            break;
+            Console.WriteLine($"AI move failed, attempt {attempts + 1}");
+            blockedMoves.Add(aiMove);
+            attempts++;
         }
-        
-        moveCount++;
     }
 
-    if (moveCount >= maxMoves)
+    if (attempts >= maxAttempts && !_game.IsGameOver)
     {
-        Console.WriteLine("WARNING: Maximum moves reached, possible infinite loop detected");
+        Console.WriteLine("AI failed to make valid move - checking for stalemate");
+        _game.CheckForStalemate();
     }
 
     await SendGameState(webSocket, true);
 }
+
+
 
 
         private async Task StartComputerVsComputerGame(WebSocket webSocket)
@@ -282,21 +282,37 @@ private async Task ProcessComputerTurn(WebSocket webSocket)
             }
         }
 
-        private async Task SendGameState(WebSocket webSocket, bool? success = null)
+        private async Task SendGameState(WebSocket webSocket, bool success = true)
         {
-            var response = new GameStateResponse
+            try
             {
-                Success = success ?? true,
-                Board = _game.GetBoardState(),
-                IsWhiteTurn = _game.IsWhiteTurn,
-                GameOver = _game.CheckGameOver(),
-                Winner = _game.CheckGameOver() ? (_game.HasWhiteWon() ? "white" : "black") : null,
-                CurrentPlayer = _game.IsPlayerMode
-                    ? (_game.IsWhiteTurn ? "human" : "computer")
-                    : "computer"
-            };
+                var gameState = new
+                {
+                    Success = success,
+                    Board = _game.GetBoardState(),
+                    IsWhiteTurn = _game.IsWhiteTurn,
+                    GameOver = _game.IsGameOver,
+                    Winner = _game.Winner,
+                    DrawReason = _game.DrawReason,
+                    CurrentPlayer = _game.IsPlayerMode 
+                        ? (_game.IsWhiteTurn ? "human" : "computer")
+                        : "computer"
+                };
 
-            await SendJson(webSocket, response);
+                string jsonResponse = JsonSerializer.Serialize(gameState);
+                byte[] responseBytes = Encoding.UTF8.GetBytes(jsonResponse);
+        
+                await webSocket.SendAsync(
+                    new ArraySegment<byte>(responseBytes), 
+                    WebSocketMessageType.Text, 
+                    true, 
+                    CancellationToken.None
+                );
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending game state: {ex.Message}");
+            }
         }
 
         private async Task SendJson(WebSocket webSocket, object data)

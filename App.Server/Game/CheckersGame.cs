@@ -16,6 +16,22 @@ public partial class CheckersGame
     private bool _isPerformanceTest;
     private bool _isPlayerMode;
     private List<string> _serverAddresses;
+    
+    private List<string> boardHistory = new List<string>();
+    private Dictionary<string, int> positionCount = new Dictionary<string, int>();
+    private const int MAX_POSITION_REPEATS = 3;
+    private const int MAX_MOVES_WITHOUT_CAPTURE = 50;
+    private int movesWithoutCapture = 0;
+    // NOWE POLA dla stanu gry
+    private bool gameOver = false;
+    private string winner = null;
+    private string drawReason = null;
+
+    // NOWE WŁAŚCIWOŚCI
+    public bool IsGameOver => gameOver;
+    public string Winner => winner;
+    public string DrawReason => drawReason;
+    public bool IsDrawGame => winner == "draw";
 
     public bool IsPlayerMode => _isPlayerMode;
     public bool IsWhiteTurn => isWhiteTurn;
@@ -57,6 +73,106 @@ public partial class CheckersGame
         Console.WriteLine($"Game settings: Depth={depth}, Granulation={granulation}, PerfTest={isPerformanceTest}, PlayerMode={isPlayerMode}");
         checkersAi.updateSettings(depth, granulation);
     }
+    // CheckersGame.cs - dodaj tę metodę jeśli jej nie ma
+    public void SwitchTurn()
+    {
+        isWhiteTurn = !isWhiteTurn;
+        mustCaptureFrom = null;
+        captureSequence.Clear();
+        Console.WriteLine($"Turn forcibly switched to {(isWhiteTurn ? "White" : "Black")}");
+    }
+    
+    public void CheckForStalemate()
+{
+    var validMoves = GetValidMovesFiltered();
+    if (validMoves.Count == 0)
+    {
+        Console.WriteLine("No valid moves available - stalemate");
+        EndGameWithDraw("Stalemate - no valid moves available");
+    }
+}
+    public bool CheckForDraw()
+    {
+        return IsDrawByRepetition() || IsDrawBy50MoveRule();
+    }
+
+    
+
+public bool CheckGameOver()
+{
+    if (gameOver) return true;
+
+    // Sprawdź remis przez 50 ruchów
+    if (movesWithoutCapture >= MAX_MOVES_WITHOUT_CAPTURE)
+    {
+        EndGameWithDraw("50 moves without capture");
+        return true;
+    }
+
+    // Sprawdź remis przez powtórzenie pozycji
+    if (IsDrawByRepetition())
+    {
+        EndGameWithDraw("Position repeated too many times");
+        return true;
+    }
+
+    // Sprawdź czy któryś gracz nie ma figur
+    bool hasWhitePieces = false;
+    bool hasBlackPieces = false;
+    
+    for (int row = 0; row < 8; row++)
+    {
+        for (int col = 0; col < 8; col++)
+        {
+            if (board.IsDarkSquare(row, col))
+            {
+                PieceType piece = board.GetPiece(row, col);
+                if (piece == PieceType.WhitePawn || piece == PieceType.WhiteKing)
+                    hasWhitePieces = true;
+                if (piece == PieceType.BlackPawn || piece == PieceType.BlackKing)
+                    hasBlackPieces = true;
+            }
+        }
+    }
+
+    if (!hasWhitePieces)
+    {
+        EndGameWithWinner("black", "White has no pieces left");
+        return true;
+    }
+    
+    if (!hasBlackPieces)
+    {
+        EndGameWithWinner("white", "Black has no pieces left");
+        return true;
+    }
+
+    // Sprawdź pat (brak możliwych ruchów)
+    var validMoves = GetValidMovesFiltered();
+    if (validMoves.Count == 0)
+    {
+        EndGameWithDraw("Stalemate - no valid moves available");
+        return true;
+    }
+
+    return false;
+}
+
+private void EndGameWithWinner(string winnerColor, string reason)
+{
+    Console.WriteLine($"Game ended. Winner: {winnerColor}. Reason: {reason}");
+    gameOver = true;
+    winner = winnerColor;
+    drawReason = null;
+}
+
+private void EndGameWithDraw(string reason)
+{
+    Console.WriteLine($"Game ended in draw: {reason}");
+    gameOver = true;
+    winner = "draw";
+    drawReason = reason;
+}
 
     public void SetServerAddresses(List<string> serverAddresses)
     {
