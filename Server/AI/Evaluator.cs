@@ -1,4 +1,5 @@
 ﻿using System;
+using App.Server;
 
 namespace MinimaxServer
 {
@@ -20,7 +21,7 @@ namespace MinimaxServer
                 {
                     if (!board.IsDarkSquare(row, col)) continue;
                     
-                    PieceType piece = board.GetPiece(row, col);
+                    PieceType piece = (PieceType)board.GetPiece(row, col);
                     if (piece == PieceType.Empty) continue;
 
                     bool isWhite = PieceUtils.IsWhite(piece);

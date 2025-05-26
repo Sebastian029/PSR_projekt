@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using App.Server;
 
 namespace MinimaxServer
 {
@@ -15,7 +16,7 @@ namespace MinimaxServer
                 {
                     if (!board.IsDarkSquare(row, col)) continue;
                     
-                    PieceType piece = board.GetPiece(row, col);
+                    PieceType piece = (PieceType)board.GetPiece(row, col);
                     if (!PieceUtils.IsColor(piece, isWhiteTurn)) continue;
 
                     var validMoves = board.GetValidMoves(row, col);
@@ -34,7 +35,7 @@ namespace MinimaxServer
                 {
                     if (!board.IsDarkSquare(row, col)) continue;
                     
-                    PieceType piece = board.GetPiece(row, col);
+                    PieceType piece = (PieceType)board.GetPiece(row, col);
                     if (PieceUtils.IsColor(piece, isWhiteTurn) && board.GetValidMoves(row, col).Count > 0)
                         return true;
                 }
