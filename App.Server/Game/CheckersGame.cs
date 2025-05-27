@@ -56,7 +56,7 @@ public partial class CheckersGame
         _serverAddresses = new List<string>();
     
         // Wyłącz serwery dla testów lokalnych
-        _serverAddresses.Add("http://192.168.6.19:5001");
+        //_serverAddresses.Add("http://192.168.101.9:5001");
         _serverAddresses.Add("http://localhost:5001");
     
         Console.WriteLine("Using LOCAL calculation only (no distributed servers)");
@@ -164,6 +164,9 @@ private void EndGameWithWinner(string winnerColor, string reason)
     gameOver = true;
     winner = winnerColor;
     drawReason = null;
+    
+    GameLogger.WriteMinimaxSummary();
+
 }
 
 private void EndGameWithDraw(string reason)
@@ -172,6 +175,9 @@ private void EndGameWithDraw(string reason)
     gameOver = true;
     winner = "draw";
     drawReason = reason;
+    
+    GameLogger.WriteMinimaxSummary();
+
 }
 
     public Dictionary<string, (int activeRequests, double avgResponseTime, bool isAvailable)> GetServerStatus()

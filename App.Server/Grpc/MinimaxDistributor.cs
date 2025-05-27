@@ -5,10 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
+using System.IO;
+using System.Diagnostics;
+using System.Text;
 
 namespace App.Client
 {
-    public class MinimaxDistributor
+    public class MinimaxDistributor : IDisposable
     {
         private readonly List<string> _serverAddresses;
         private readonly Dictionary<string, GrpcChannel> _channels;
@@ -30,11 +33,28 @@ namespace App.Client
 
         public int DistributeMinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
         {
-            return SendBoardForEvaluation(board, depth, isMaximizing);
+            var totalStopwatch = Stopwatch.StartNew();
+            
+            int result = SendBoardForEvaluation(board, depth, isMaximizing);
+            
+            totalStopwatch.Stop();
+            GameLogger.LogMinimaxOperation(
+                "DistributeMinimaxSearch", 
+                "ALL", 
+                depth, 
+                isMaximizing, 
+                totalStopwatch.ElapsedMilliseconds, 
+                0, 
+                0, 
+                0, 
+                result);
+            
+            return result;
         }
 
         private int SendBoardForEvaluation(CheckersBoard board, int depth, bool isMaximizing)
         {
+            var totalStopwatch = Stopwatch.StartNew();
             string serverAddress = _performanceTracker.GetBestServer();
             var channel = _channels[serverAddress];
             var client = new CheckersEvaluationService.CheckersEvaluationServiceClient(channel);
@@ -46,8 +66,12 @@ namespace App.Client
                 RequestTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now)
             };
 
-            // Konwertuj z 8x8 CheckersBoard na format 32-polowy dla serwera
+            // Mierzenie czasu konwersji planszy
+            var conversionStopwatch = Stopwatch.StartNew();
             var compressedBoard = ConvertBoardTo32Format(board);
+            conversionStopwatch.Stop();
+            long conversionTime = conversionStopwatch.ElapsedMilliseconds;
+            
             request.Board.Add(compressedBoard[0]);
             request.Board.Add(compressedBoard[1]);
             request.Board.Add(compressedBoard[2]);
@@ -55,21 +79,53 @@ namespace App.Client
             try
             {
                 _performanceTracker.StartRequest(serverAddress);
-                var startTime = DateTimeOffset.Now;
                 
+                // Mierzenie czasu komunikacji sieciowej
+                var networkStopwatch = Stopwatch.StartNew();
                 var response = client.MinimaxSearch(request);
+                networkStopwatch.Stop();
+                long networkTime = networkStopwatch.ElapsedMilliseconds;
                 
-                var endTime = DateTimeOffset.Now;
-                var responseTime = (endTime - startTime).TotalMilliseconds;
-                _performanceTracker.UpdateMetrics(serverAddress, responseTime);
+                _performanceTracker.UpdateMetrics(serverAddress, networkTime);
                 
-                Console.WriteLine($"Server {serverAddress} response time: {responseTime} ms");
+                totalStopwatch.Stop();
+                long totalTime = totalStopwatch.ElapsedMilliseconds;
+                
+                // Obliczenie czasu obliczeń (całkowity czas minus czas konwersji i komunikacji)
+                long computationTime = totalTime - conversionTime - networkTime;
+                if (computationTime < 0) computationTime = 0; // Na wszelki wypadek
+                
+                Console.WriteLine($"Server {serverAddress} - Total: {totalTime}ms, Network: {networkTime}ms, Computation: {computationTime}ms");
+                
+                GameLogger.LogMinimaxOperation(
+                    "SendBoardForEvaluation", 
+                    serverAddress, 
+                    depth, 
+                    isMaximizing, 
+                    totalTime, 
+                    conversionTime, 
+                    networkTime, 
+                    computationTime, 
+                    response.Score);
+                
                 return response.Score;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error with server {serverAddress}: {ex.Message}");
                 _performanceTracker.MarkServerUnavailable(serverAddress);
+                
+                totalStopwatch.Stop();
+                GameLogger.LogMinimaxOperation(
+                    "ServerFailure", 
+                    serverAddress, 
+                    depth, 
+                    isMaximizing, 
+                    totalStopwatch.ElapsedMilliseconds, 
+                    conversionTime, 
+                    0, 
+                    0, 
+                    0);
                 
                 // Try another server
                 return RetryWithAnotherServer(board, depth, isMaximizing, serverAddress);
@@ -78,13 +134,39 @@ namespace App.Client
 
         private int RetryWithAnotherServer(CheckersBoard board, int depth, bool isMaximizing, string failedServer)
         {
+            var totalStopwatch = Stopwatch.StartNew();
+            
             string alternativeServer = _performanceTracker.GetBestServer();
             if (alternativeServer == failedServer || string.IsNullOrEmpty(alternativeServer))
             {
+                totalStopwatch.Stop();
+                GameLogger.LogMinimaxOperation(
+                    "RetryFailed", 
+                    "NONE", 
+                    depth, 
+                    isMaximizing, 
+                    totalStopwatch.ElapsedMilliseconds, 
+                    0, 
+                    0, 
+                    0, 
+                    0);
                 throw new Exception("No available servers to handle the request");
             }
 
             Console.WriteLine($"Retrying with server {alternativeServer}");
+            
+            totalStopwatch.Stop();
+            GameLogger.LogMinimaxOperation(
+                "RetryWithServer", 
+                alternativeServer, 
+                depth, 
+                isMaximizing, 
+                totalStopwatch.ElapsedMilliseconds, 
+                0, 
+                0, 
+                0, 
+                0);
+                
             return SendBoardForEvaluation(board, depth, isMaximizing);
         }
 
@@ -149,6 +231,10 @@ namespace App.Client
 
         public void Dispose()
         {
+            // Zapisz końcowe podsumowanie przed zamknięciem
+            Console.WriteLine("Saving final summary...");
+            GameLogger.WriteMinimaxSummary();
+            
             foreach (var channel in _channels.Values)
             {
                 channel?.Dispose();
