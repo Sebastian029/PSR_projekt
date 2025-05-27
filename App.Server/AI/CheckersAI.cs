@@ -116,13 +116,16 @@ public class CheckersAI
         }
     }
 
-
-
     public bool IsGameOver(CheckersBoard board) =>
         !_moveGenerator.HasValidMoves(board, true) || !_moveGenerator.HasValidMoves(board, false);
 
     public bool WhiteWon(CheckersBoard board) =>
         _moveGenerator.HasValidMoves(board, true) && !_moveGenerator.HasValidMoves(board, false);
+
+    public MinimaxDistributor GetMinimaxDistributor()
+    {
+        return _minimaxDistributor;
+    }
 
     public void updateSettings(int depth, int granulation, List<string> serverAddresses = null)
     {
@@ -134,12 +137,12 @@ public class CheckersAI
             if (_serverAddresses.Count > 0)
             {
                 _minimaxDistributor = new MinimaxDistributor(_serverAddresses);
-               // Console.WriteLine($"Updated distributor with {_serverAddresses.Count} server(s)");
+                Console.WriteLine($"Updated distributor with {_serverAddresses.Count} server(s)");
             }
             else
             {
                 _minimaxDistributor = null;
-              //  Console.WriteLine("NO SERVER AVAILABLE");
+                Console.WriteLine("NO SERVER AVAILABLE");
             }
         }
 

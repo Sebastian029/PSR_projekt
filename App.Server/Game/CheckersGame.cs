@@ -56,8 +56,8 @@ public partial class CheckersGame
         _serverAddresses = new List<string>();
     
         // Wyłącz serwery dla testów lokalnych
+        _serverAddresses.Add("http://192.168.6.19:5001");
         _serverAddresses.Add("http://localhost:5001");
-        // _serverAddresses.Add("http://localhost:5002");
     
         Console.WriteLine("Using LOCAL calculation only (no distributed servers)");
         checkersAi = new CheckersAI(depth: 5, granulation: 10, isPerformanceTest: false, serverAddresses: _serverAddresses);
@@ -174,6 +174,15 @@ private void EndGameWithDraw(string reason)
     drawReason = reason;
 }
 
+    public Dictionary<string, (int activeRequests, double avgResponseTime, bool isAvailable)> GetServerStatus()
+    {
+        if (checkersAi != null && checkersAi.GetMinimaxDistributor() != null)
+        {
+            return checkersAi.GetMinimaxDistributor().GetServerStatus();
+        }
+        return new Dictionary<string, (int activeRequests, double avgResponseTime, bool isAvailable)>();
+    }
+
     public void SetServerAddresses(List<string> serverAddresses)
     {
         _serverAddresses = serverAddresses ?? new List<string>();
@@ -187,6 +196,16 @@ private void EndGameWithDraw(string reason)
         {
             _serverAddresses.Add(address);
             Console.WriteLine($"Added server address: {address}. Total servers: {_serverAddresses.Count}");
+            checkersAi.updateSettings(_depth, _granulation, _serverAddresses);
+        }
+    }
+
+    public void RemoveServerAddress(string address)
+    {
+        if (_serverAddresses.Contains(address))
+        {
+            _serverAddresses.Remove(address);
+            Console.WriteLine($"Removed server address: {address}. Total servers: {_serverAddresses.Count}");
             checkersAi.updateSettings(_depth, _granulation, _serverAddresses);
         }
     }

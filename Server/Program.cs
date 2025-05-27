@@ -15,7 +15,7 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        int[] ports = { 5001, 5002 };
+        int[] ports = { 5001 };
         List<Task> serverTasks = new List<Task>();
 
         foreach (int port in ports)

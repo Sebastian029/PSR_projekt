@@ -12,16 +12,19 @@ namespace App.Client
     {
         private readonly List<string> _serverAddresses;
         private readonly Dictionary<string, GrpcChannel> _channels;
-        private int _currentServerIndex = 0;
+        private readonly ServerPerformanceTracker _performanceTracker;
+        private readonly object _lockObject = new object();
 
         public MinimaxDistributor(List<string> serverAddresses)
         {
             _serverAddresses = serverAddresses;
             _channels = new Dictionary<string, GrpcChannel>();
+            _performanceTracker = new ServerPerformanceTracker();
             
             foreach (var address in _serverAddresses)
             {
                 _channels[address] = GrpcChannel.ForAddress(address);
+                _performanceTracker.RegisterServer(address);
             }
         }
 
@@ -32,7 +35,7 @@ namespace App.Client
 
         private int SendBoardForEvaluation(CheckersBoard board, int depth, bool isMaximizing)
         {
-            string serverAddress = GetNextServerAddress();
+            string serverAddress = _performanceTracker.GetBestServer();
             var channel = _channels[serverAddress];
             var client = new CheckersEvaluationService.CheckersEvaluationServiceClient(channel);
             
@@ -49,12 +52,40 @@ namespace App.Client
             request.Board.Add(compressedBoard[1]);
             request.Board.Add(compressedBoard[2]);
 
-            var response = client.MinimaxSearch(request);
-            var currentTime = DateTimeOffset.Now;
-            var responseTime = response.ResponseTime.ToDateTimeOffset();
-            Console.WriteLine($"Response time: {(currentTime - responseTime).TotalMilliseconds} ms");
-            
-            return response.Score;
+            try
+            {
+                _performanceTracker.StartRequest(serverAddress);
+                var startTime = DateTimeOffset.Now;
+                
+                var response = client.MinimaxSearch(request);
+                
+                var endTime = DateTimeOffset.Now;
+                var responseTime = (endTime - startTime).TotalMilliseconds;
+                _performanceTracker.UpdateMetrics(serverAddress, responseTime);
+                
+                Console.WriteLine($"Server {serverAddress} response time: {responseTime} ms");
+                return response.Score;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error with server {serverAddress}: {ex.Message}");
+                _performanceTracker.MarkServerUnavailable(serverAddress);
+                
+                // Try another server
+                return RetryWithAnotherServer(board, depth, isMaximizing, serverAddress);
+            }
+        }
+
+        private int RetryWithAnotherServer(CheckersBoard board, int depth, bool isMaximizing, string failedServer)
+        {
+            string alternativeServer = _performanceTracker.GetBestServer();
+            if (alternativeServer == failedServer || string.IsNullOrEmpty(alternativeServer))
+            {
+                throw new Exception("No available servers to handle the request");
+            }
+
+            Console.WriteLine($"Retrying with server {alternativeServer}");
+            return SendBoardForEvaluation(board, depth, isMaximizing);
         }
 
         private uint[] ConvertBoardTo32Format(CheckersBoard board)
@@ -111,14 +142,9 @@ namespace App.Client
             };
         }
 
-        private string GetNextServerAddress()
+        public Dictionary<string, (int activeRequests, double avgResponseTime, bool isAvailable)> GetServerStatus()
         {
-            lock (this)
-            {
-                string address = _serverAddresses[_currentServerIndex];
-                _currentServerIndex = (_currentServerIndex + 1) % _serverAddresses.Count;
-                return address;
-            }
+            return _performanceTracker.GetServerStatus();
         }
 
         public void Dispose()
