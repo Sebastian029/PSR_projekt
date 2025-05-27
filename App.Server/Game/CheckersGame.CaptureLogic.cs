@@ -9,116 +9,125 @@ namespace App.Server
     {
         
         private bool ExecuteCapture(int fromRow, int fromCol, int toRow, int toCol)
-{
-    //Console.WriteLine($"ExecuteCapture: Attempting capture from ({fromRow},{fromCol}) to ({toRow},{toCol})");
-    
-    PieceType piece = board.GetPiece(fromRow, fromCol);
-    //Console.WriteLine($"ExecuteCapture: Piece type is {piece}");
-    
-    // Sprawdź czy to wielokrotne bicie z GetMultipleCaptures
-    var multipleCaptures = board.GetMultipleCaptures(fromRow, fromCol);
-    foreach (var sequence in multipleCaptures)
-    {
-        if (sequence.Count > 0 && sequence.Last() == (toRow, toCol))
         {
-            //Console.WriteLine($"ExecuteCapture: Found in multiple captures sequence: {string.Join(" → ", sequence.Select(s => $"({s.row},{s.col})"))}");
+            //Console.WriteLine($"ExecuteCapture: Attempting capture from ({fromRow},{fromCol}) to ({toRow},{toCol})");
             
-            // POPRAWKA: Wykonaj tylko pierwszy krok sekwencji
-            if (sequence.Count > 0)
+            PieceType piece = board.GetPiece(fromRow, fromCol);
+            //Console.WriteLine($"ExecuteCapture: Piece type is {piece}");
+            
+            // Sprawdź czy to wielokrotne bicie z GetMultipleCaptures
+            var multipleCaptures = board.GetMultipleCaptures(fromRow, fromCol);
+            foreach (var sequence in multipleCaptures)
             {
-                var firstStep = sequence[0];
-                //Console.WriteLine($"ExecuteCapture: Executing first step to ({firstStep.row},{firstStep.col})");
-                
-                // Sprawdź czy pierwszy krok to pojedyncze bicie
-                var validCaptures = board.GetValidCaptures(fromRow, fromCol);
-                var targetCapture = validCaptures.FirstOrDefault(c => c.toRow == firstStep.row && c.toCol == firstStep.col);
-                
-                if (targetCapture != default)
+                if (sequence.Count > 0 && sequence.Last() == (toRow, toCol))
                 {
-                    // Wykonaj pierwszy krok
-                    board.SetPiece(fromRow, fromCol, PieceType.Empty);
-                    board.SetPiece(targetCapture.capturedRow, targetCapture.capturedCol, PieceType.Empty);
-                    board.SetPiece(firstStep.row, firstStep.col, piece);
+                    //Console.WriteLine($"ExecuteCapture: Found in multiple captures sequence: {string.Join(" → ", sequence.Select(s => $"({s.row},{s.col})"))}");
                     
-                   // Console.WriteLine($"ExecuteCapture: Captured piece at ({targetCapture.capturedRow},{targetCapture.capturedCol})");
-                    
-                    // Sprawdź promocję
-                    if (CheckAndPromotePiece(piece, firstStep.row, firstStep.col))
+                    // Wykonaj tylko pierwszy krok sekwencji
+                    if (sequence.Count > 0)
                     {
-                        mustCaptureFrom = null;
-                        captureSequence.Clear();
-                        isWhiteTurn = !isWhiteTurn;
-                        return true;
+                        var firstStep = sequence[0];
+                        //Console.WriteLine($"ExecuteCapture: Executing first step to ({firstStep.row},{firstStep.col})");
+                        
+                        // Sprawdź czy pierwszy krok to pojedyncze bicie
+                        var validCaptures = board.GetValidCaptures(fromRow, fromCol);
+                        var targetCapture = validCaptures.FirstOrDefault(c => c.toRow == firstStep.row && c.toCol == firstStep.col);
+                        
+                        if (targetCapture != default)
+                        {
+                            // Wykonaj pierwszy krok
+                            board.SetPiece(fromRow, fromCol, PieceType.Empty);
+                            board.SetPiece(targetCapture.capturedRow, targetCapture.capturedCol, PieceType.Empty);
+                            board.SetPiece(firstStep.row, firstStep.col, piece);
+                            
+                           // Console.WriteLine($"ExecuteCapture: Captured piece at ({targetCapture.capturedRow},{targetCapture.capturedCol})");
+                            
+                            // Sprawdź promocję
+                            if (CheckAndPromotePiece(piece, firstStep.row, firstStep.col))
+                            {
+                                mustCaptureFrom = null;
+                                captureSequence.Clear();
+                                isWhiteTurn = !isWhiteTurn;
+                                return true;
+                            }
+                            
+                            // Sprawdź czy są dalsze bicia możliwe
+                            var nextCaptures = board.GetValidCaptures(firstStep.row, firstStep.col);
+                            if (nextCaptures.Count > 0)
+                            {
+                                mustCaptureFrom = (firstStep.row, firstStep.col);
+                                captureSequence.Add((firstStep.row, firstStep.col));
+                                return true;
+                            }
+                            
+                            // Jeśli nie ma dalszych bić, zmień turę
+                            mustCaptureFrom = null;
+                            captureSequence.Clear();
+                            isWhiteTurn = !isWhiteTurn;
+                            return true;
+                        }
                     }
-                    
-                    // Ustaw wymagane dalsze bicie
-                    mustCaptureFrom = (firstStep.row, firstStep.col);
-                    captureSequence.Add((firstStep.row, firstStep.col));
-                    //Console.WriteLine($"ExecuteCapture: Must continue capturing from ({firstStep.row},{firstStep.col})");
-                    return true;
                 }
             }
+            
+            // Sprawdź czy to wielokrotne bicie (ruch o więcej niż 2 pola)
+            int rowDiff = Math.Abs(toRow - fromRow);
+            int colDiff = Math.Abs(toCol - fromCol);
+            
+            if (rowDiff > 2 && colDiff > 2 && rowDiff == colDiff)
+            {
+               // Console.WriteLine($"ExecuteCapture: Direct multiple capture detected - {rowDiff} squares");
+                return ExecuteMultipleCapture(fromRow, fromCol, toRow, toCol);
+            }
+            
+            // Pojedyncze bicie
+            var validSingleCaptures = board.GetValidCaptures(fromRow, fromCol);
+            var targetSingleCapture = validSingleCaptures.FirstOrDefault(c => c.toRow == toRow && c.toCol == toCol);
+            
+            if (targetSingleCapture == default) 
+            {
+                //Console.WriteLine($"ExecuteCapture: No valid single capture from ({fromRow},{fromCol}) to ({toRow},{toCol})");
+               //Console.WriteLine("Available single captures:");
+                foreach (var capture in validSingleCaptures)
+                {
+                    //Console.WriteLine($"  ({capture.toRow}, {capture.toCol}) capturing ({capture.capturedRow}, {capture.capturedCol})");
+                }
+                return false;
+            }
+
+           // Console.WriteLine($"ExecuteCapture: Single capture - capturing piece at ({targetSingleCapture.capturedRow},{targetSingleCapture.capturedCol})");
+
+            // Wykonaj pojedyncze bicie
+            board.SetPiece(fromRow, fromCol, PieceType.Empty);
+            board.SetPiece(targetSingleCapture.capturedRow, targetSingleCapture.capturedCol, PieceType.Empty);
+            board.SetPiece(toRow, toCol, piece);
+
+            // Sprawdź promocję
+            if (CheckAndPromotePiece(piece, toRow, toCol))
+            {
+                mustCaptureFrom = null;
+                captureSequence.Clear();
+                isWhiteTurn = !isWhiteTurn;
+                return true;
+            }
+
+            // Sprawdź dalsze bicia
+            var furtherCaptures = board.GetValidCaptures(toRow, toCol);
+            if (furtherCaptures.Count > 0)
+            {
+                mustCaptureFrom = (toRow, toCol);
+                captureSequence.Add((toRow, toCol));
+                //Console.WriteLine($"Further captures available from ({toRow},{toCol})");
+                return true;
+            }
+
+            // Koniec sekwencji bić
+            mustCaptureFrom = null;
+            captureSequence.Clear();
+            isWhiteTurn = !isWhiteTurn;
+            //Console.WriteLine("Capture sequence completed");
+            return true;
         }
-    }
-    
-    // Sprawdź czy to wielokrotne bicie (ruch o więcej niż 2 pola)
-    int rowDiff = Math.Abs(toRow - fromRow);
-    int colDiff = Math.Abs(toCol - fromCol);
-    
-    if (rowDiff > 2 && colDiff > 2 && rowDiff == colDiff)
-    {
-       // Console.WriteLine($"ExecuteCapture: Direct multiple capture detected - {rowDiff} squares");
-        return ExecuteMultipleCapture(fromRow, fromCol, toRow, toCol);
-    }
-    
-    // Pojedyncze bicie
-    var validSingleCaptures = board.GetValidCaptures(fromRow, fromCol);
-    var targetSingleCapture = validSingleCaptures.FirstOrDefault(c => c.toRow == toRow && c.toCol == toCol);
-    
-    if (targetSingleCapture == default) 
-    {
-        //Console.WriteLine($"ExecuteCapture: No valid single capture from ({fromRow},{fromCol}) to ({toRow},{toCol})");
-       //Console.WriteLine("Available single captures:");
-        foreach (var capture in validSingleCaptures)
-        {
-            //Console.WriteLine($"  ({capture.toRow}, {capture.toCol}) capturing ({capture.capturedRow}, {capture.capturedCol})");
-        }
-        return false;
-    }
-
-   // Console.WriteLine($"ExecuteCapture: Single capture - capturing piece at ({targetSingleCapture.capturedRow},{targetSingleCapture.capturedCol})");
-
-    // Wykonaj pojedyncze bicie
-    board.SetPiece(fromRow, fromCol, PieceType.Empty);
-    board.SetPiece(targetSingleCapture.capturedRow, targetSingleCapture.capturedCol, PieceType.Empty);
-    board.SetPiece(toRow, toCol, piece);
-
-    // Sprawdź promocję
-    if (CheckAndPromotePiece(piece, toRow, toCol))
-    {
-        mustCaptureFrom = null;
-        captureSequence.Clear();
-        isWhiteTurn = !isWhiteTurn;
-        return true;
-    }
-
-    // Sprawdź dalsze bicia
-    var furtherCaptures = board.GetValidCaptures(toRow, toCol);
-    if (furtherCaptures.Count > 0)
-    {
-        mustCaptureFrom = (toRow, toCol);
-        captureSequence.Add((toRow, toCol));
-        //Console.WriteLine($"Further captures available from ({toRow},{toCol})");
-        return true;
-    }
-
-    // Koniec sekwencji bić
-    mustCaptureFrom = null;
-    captureSequence.Clear();
-    isWhiteTurn = !isWhiteTurn;
-    //Console.WriteLine("Capture sequence completed");
-    return true;
-}
 
 
 

@@ -168,7 +168,7 @@ namespace App.Server.WebSocketHandlers
 
                 if (_game.IsPlayerMode && !_game.IsWhiteTurn && !_game.CheckGameOver())
                 {
-                    await Task.Delay(300);
+                    await Task.Delay(1000);
                     await ProcessComputerTurn(webSocket);
                 }
 
@@ -265,7 +265,7 @@ private async Task ProcessComputerTurn(WebSocket webSocket)
             {
                 await ProcessComputerTurn(webSocket);
                 if (!_game.IsPerformanceTest)
-                    await Task.Delay(300);
+                    await Task.Delay(1000);
             }
             stopwatch.Stop();
             GameLogger.LogGame(_game.Depth, _game.Granulation, stopwatch.ElapsedMilliseconds);
