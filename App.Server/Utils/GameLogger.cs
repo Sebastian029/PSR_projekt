@@ -11,6 +11,7 @@ public static class GameLogger
     private static readonly string GameLogFilePath = "game_log.csv";
     private static readonly string MinimaxPerformanceLogPath = "minimax_performance.csv";
     private static readonly string MinimaxSummaryLogPath = "minimax_summary.txt";
+    private static readonly string MinimaxSummaryCsvPath = "minimax_summary.csv";
     private static readonly object LogLock = new object();
     
     // Statystyki minimaksa
@@ -41,6 +42,13 @@ public static class GameLogger
         if (!File.Exists(MinimaxSummaryLogPath))
         {
             File.WriteAllText(MinimaxSummaryLogPath, "");
+        }
+        
+        // Inicjalizacja nowego pliku CSV dla podsumowań
+        if (!File.Exists(MinimaxSummaryCsvPath))
+        {
+            File.WriteAllText(MinimaxSummaryCsvPath, 
+                "Depth;Granulation;ActiveServers;SessionDurationMin;TotalRequests;AvgCommunicationTimeMs;AvgComputationTimeMs;TotalCommunicationTimeMs;TotalComputationTimeMs\n");
         }
     }
 
@@ -122,46 +130,79 @@ public static class GameLogger
                     return;
                 }
                 
-                var sb = new StringBuilder();
-                sb.AppendLine("=== Minimax Performance Summary ===");
-                sb.AppendLine($"Time: {DateTime.Now}");
-                sb.AppendLine($"Session duration: {(DateTime.Now - _sessionStartTime).TotalMinutes:F2} minutes");
-                sb.AppendLine($"Granulation: {_currentGranulation}");
-                sb.AppendLine($"Active servers: {_activeServers.Count}");
+                // Zapisz do pliku tekstowego (zachowujemy obecny format)
+                WriteMinimaxSummaryToText();
                 
-                // Dodajemy listę adresów serwerów
-                if (_activeServers.Count > 0)
-                {
-                    sb.AppendLine("Server addresses:");
-                    foreach (var server in _activeServers.OrderBy(s => s))
-                    {
-                        sb.AppendLine($"  - {server}");
-                    }
-                }
-                
-                sb.AppendLine($"Total requests: {_totalRequests}");
-                sb.AppendLine($"Average communication time: {(double)_totalCommunicationTime / _totalRequests:F2} ms");
-                sb.AppendLine($"Average computation time: {(double)_totalComputationTime / _totalRequests:F2} ms");
-                sb.AppendLine($"Total communication time: {_totalCommunicationTime} ms");
-                sb.AppendLine($"Total computation time: {_totalComputationTime} ms");
-                
-                sb.AppendLine("\nBy depth:");
-                foreach (var depthStat in _depthStatistics.OrderBy(d => d.Key))
-                {
-                    double avgTime = (double)depthStat.Value.totalTime / depthStat.Value.count;
-                    sb.AppendLine($"  Depth {depthStat.Key}: {depthStat.Value.count} requests, avg time: {avgTime:F2} ms");
-                }
-                
-                sb.AppendLine("\n=== End of Summary ===\n");
-                
-                // Dopisujemy na końcu pliku
-                File.AppendAllText(MinimaxSummaryLogPath, sb.ToString());
+                // Zapisz do pliku CSV (nowy format)
+                WriteMinimaxSummaryToCsv();
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Błąd podczas zapisu podsumowania: {ex.Message}");
         }
+    }
+    
+    private static void WriteMinimaxSummaryToText()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("=== Minimax Performance Summary ===");
+        sb.AppendLine($"Time: {DateTime.Now}");
+        sb.AppendLine($"Session duration: {(DateTime.Now - _sessionStartTime).TotalMinutes:F2} minutes");
+        sb.AppendLine($"Granulation: {_currentGranulation}");
+        sb.AppendLine($"Active servers: {_activeServers.Count}");
+        
+        // Dodajemy listę adresów serwerów
+        if (_activeServers.Count > 0)
+        {
+            sb.AppendLine("Server addresses:");
+            foreach (var server in _activeServers.OrderBy(s => s))
+            {
+                sb.AppendLine($"  - {server}");
+            }
+        }
+        
+        sb.AppendLine($"Total requests: {_totalRequests}");
+        sb.AppendLine($"Average communication time: {(double)_totalCommunicationTime / _totalRequests:F2} ms");
+        sb.AppendLine($"Average computation time: {(double)_totalComputationTime / _totalRequests:F2} ms");
+        sb.AppendLine($"Total communication time: {_totalCommunicationTime} ms");
+        sb.AppendLine($"Total computation time: {_totalComputationTime} ms");
+        
+        sb.AppendLine("\nBy depth:");
+        foreach (var depthStat in _depthStatistics.OrderBy(d => d.Key))
+        {
+            double avgTime = (double)depthStat.Value.totalTime / depthStat.Value.count;
+            sb.AppendLine($"  Depth {depthStat.Key}: {depthStat.Value.count} requests, avg time: {avgTime:F2} ms");
+        }
+        
+        sb.AppendLine("\n=== End of Summary ===\n");
+        
+        // Dopisujemy na końcu pliku
+        File.AppendAllText(MinimaxSummaryLogPath, sb.ToString());
+    }
+    
+    private static void WriteMinimaxSummaryToCsv()
+    {
+        double sessionDuration = (DateTime.Now - _sessionStartTime).TotalMinutes;
+        double avgCommunicationTime = _totalRequests > 0 ? (double)_totalCommunicationTime / _totalRequests : 0;
+        double avgComputationTime = _totalRequests > 0 ? (double)_totalComputationTime / _totalRequests : 0;
+        
+        // Pobierz głębokość (zakładając, że jest tylko jedna głębokość w statystykach)
+        int depth = _depthStatistics.Keys.FirstOrDefault();
+        
+        var csvLine = string.Format(CultureInfo.InvariantCulture,
+            "{0};{1};{2};{3:F2};{4};{5:F2};{6:F2};{7};{8}\n",
+            depth,                      // głębokość
+            _currentGranulation,        // granulacja
+            _activeServers.Count,       // aktywne serwery
+            sessionDuration,            // czas trwania
+            _totalRequests,             // całkowita liczba zapytań
+            avgCommunicationTime,       // średni czas komunikacji
+            avgComputationTime,         // średni czas obliczeń
+            _totalCommunicationTime,    // całkowity czas komunikacji
+            _totalComputationTime);     // całkowity czas obliczeń
+        
+        File.AppendAllText(MinimaxSummaryCsvPath, csvLine);
     }
     
     // Metoda do resetowania statystyk po zapisaniu podsumowania (opcjonalnie)
