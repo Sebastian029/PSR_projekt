@@ -35,7 +35,33 @@ namespace MinimaxServer
 
             if (depth == _maxDepth)
             {
-                //Console.WriteLine($"Starting search at depth {depth}: Found {moves.Count} moves");
+                // Parallelize top-level move evaluation
+                if (moves.Count == 0)
+                {
+                    return _evaluator.EvaluateBoard(board, isMaximizing);
+                }
+
+                int bestEval = isMaximizing ? int.MinValue : int.MaxValue;
+                object lockObj = new object();
+
+                System.Threading.Tasks.Parallel.ForEach(moves, move =>
+                {
+                    var (fromRow, fromCol, toRow, toCol) = move;
+                    CheckersBoard simulated = board.Clone();
+                    simulated.MovePiece(fromRow, fromCol, toRow, toCol);
+                    int eval = MinimaxSearch(simulated, depth - 1, !isMaximizing);
+
+                    lock (lockObj)
+                    {
+                        if (isMaximizing)
+                            bestEval = Math.Max(bestEval, eval);
+                        else
+                            bestEval = Math.Min(bestEval, eval);
+                    }
+                });
+
+                //Console.WriteLine($"Search completed - Total nodes evaluated: {_nodesEvaluated}, Best score: {bestEval}");
+                return bestEval;
             }
 
             if (moves.Count == 0)
@@ -43,23 +69,17 @@ namespace MinimaxServer
                 return _evaluator.EvaluateBoard(board, isMaximizing);
             }
 
-            int bestEval = isMaximizing ? int.MinValue : int.MaxValue;
-
+            int bestEvalSeq = isMaximizing ? int.MinValue : int.MaxValue;
             foreach (var (fromRow, fromCol, toRow, toCol) in moves)
             {
                 CheckersBoard simulated = board.Clone();
                 simulated.MovePiece(fromRow, fromCol, toRow, toCol);
 
                 int eval = MinimaxSearch(simulated, depth - 1, !isMaximizing);
-                bestEval = isMaximizing ? Math.Max(bestEval, eval) : Math.Min(bestEval, eval);
+                bestEvalSeq = isMaximizing ? Math.Max(bestEvalSeq, eval) : Math.Min(bestEvalSeq, eval);
             }
 
-            if (depth == _maxDepth)
-            {
-                //Console.WriteLine($"Search completed - Total nodes evaluated: {_nodesEvaluated}, Best score: {bestEval}");
-            }
-
-            return bestEval;
+            return bestEvalSeq;
         }
     }
 }

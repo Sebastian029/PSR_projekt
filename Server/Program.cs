@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
@@ -15,15 +14,7 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        int[] ports = { 5001 };
-        List<Task> serverTasks = new List<Task>();
-
-        foreach (int port in ports)
-        {
-            serverTasks.Add(Task.Run(() => StartServer(port)));
-        }
-
-        await Task.WhenAll(serverTasks);
+        await StartServer(5001);
     }
 
     private static async Task StartServer(int port)
@@ -38,10 +29,8 @@ public class Program
             });
         });
 
-        // POPRAWKA: Dodaj rejestrację serwisów
+        // Register services
         builder.Services.AddGrpc();
-        
-        // WAŻNE: Zarejestruj IBoardEvaluator z właściwym namespace
         builder.Services.AddSingleton<MinimaxServer.IBoardEvaluator, MinimaxServer.Evaluator>();
 
         builder.Services.AddLogging(logging =>
