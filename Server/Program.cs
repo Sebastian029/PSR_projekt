@@ -19,11 +19,11 @@ public class Program
 
     private static async Task StartServer(int port)
     {
-        var builder = WebApplication.CreateBuilder(new[] { $"--urls=http://127.0.0.1:{port}" });
+        var builder = WebApplication.CreateBuilder(new[] { $"--urls=http://0.0.0.0:{port}" });
 
         builder.WebHost.ConfigureKestrel(options =>
         {
-            options.Listen(IPAddress.Parse("127.0.0.1"), port, listenOptions =>
+            options.Listen(IPAddress.Any, port, listenOptions =>
             {
                 listenOptions.Protocols = HttpProtocols.Http2;
             });

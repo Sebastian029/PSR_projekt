@@ -8,6 +8,8 @@ using Google.Protobuf.WellKnownTypes;
 using System.IO;
 using System.Diagnostics;
 using System.Text;
+using System.Linq;
+using System.Collections.Concurrent;
 
 namespace App.Client
 {
@@ -15,22 +17,21 @@ namespace App.Client
     {
         private readonly List<string> _serverAddresses;
         private readonly Dictionary<string, GrpcChannel> _channels;
-        private readonly ServerPerformanceTracker _performanceTracker;
         private readonly object _lockObject = new object();
+        private int _currentServerIndex = 0;
 
         public MinimaxDistributor(List<string> serverAddresses)
         {
             _serverAddresses = serverAddresses;
             _channels = new Dictionary<string, GrpcChannel>();
-            _performanceTracker = new ServerPerformanceTracker();
             
             foreach (var address in _serverAddresses)
             {
                 _channels[address] = GrpcChannel.ForAddress(address);
-                _performanceTracker.RegisterServer(address);
             }
         }
 
+        // Original single task method
         public int DistributeMinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
         {
             var totalStopwatch = Stopwatch.StartNew();
@@ -52,10 +53,79 @@ namespace App.Client
             return result;
         }
 
-        private int SendBoardForEvaluation(CheckersBoard board, int depth, bool isMaximizing)
+        // New parallel task distribution method
+        public async Task<List<int>> DistributeMultipleMinimaxSearches(
+            List<(CheckersBoard board, int depth, bool isMaximizing)> tasks)
+        {
+            var taskList = new List<Task<int>>();
+            
+            // Send tasks to servers in round-robin fashion
+            for (int i = 0; i < tasks.Count; i++)
+            {
+                var task = tasks[i];
+                var serverAddress = GetNextServerAddress();
+                
+                taskList.Add(SendTaskToSpecificServer(task.board, task.depth, task.isMaximizing, serverAddress));
+            }
+            
+            // Wait for all results
+            var results = await Task.WhenAll(taskList);
+            return results.ToList();
+        }
+
+        // Round-robin with continuous task processing
+        public async Task<List<int>> ProcessTasksWithRoundRobin(
+            List<(CheckersBoard board, int depth, bool isMaximizing)> allTasks)
+        {
+            var results = new ConcurrentBag<int>();
+            var activeTasks = new Dictionary<string, Task<int>>();
+            var taskQueue = new Queue<(CheckersBoard, int, bool)>(allTasks);
+            
+            // Initially send one task to each server
+            foreach (var serverAddress in _serverAddresses)
+            {
+                if (taskQueue.Count > 0)
+                {
+                    var task = taskQueue.Dequeue();
+                    activeTasks[serverAddress] = SendTaskToSpecificServer(task.Item1, task.Item2, task.Item3, serverAddress);
+                }
+            }
+            
+            // Process remaining tasks as servers become available
+            while (activeTasks.Count > 0)
+            {
+                var completedTask = await Task.WhenAny(activeTasks.Values);
+                var completedServer = activeTasks.First(kvp => kvp.Value == completedTask).Key;
+                
+                // Collect result
+                results.Add(await completedTask);
+                activeTasks.Remove(completedServer);
+                
+                // Send next task to the now-free server
+                if (taskQueue.Count > 0)
+                {
+                    var nextTask = taskQueue.Dequeue();
+                    activeTasks[completedServer] = SendTaskToSpecificServer(
+                        nextTask.Item1, nextTask.Item2, nextTask.Item3, completedServer);
+                }
+            }
+            
+            return results.ToList();
+        }
+
+        private string GetNextServerAddress()
+        {
+            lock (_lockObject)
+            {
+                var serverAddress = _serverAddresses[_currentServerIndex];
+                _currentServerIndex = (_currentServerIndex + 1) % _serverAddresses.Count;
+                return serverAddress;
+            }
+        }
+
+        private async Task<int> SendTaskToSpecificServer(CheckersBoard board, int depth, bool isMaximizing, string serverAddress)
         {
             var totalStopwatch = Stopwatch.StartNew();
-            string serverAddress = _performanceTracker.GetBestServer();
             var channel = _channels[serverAddress];
             var client = new CheckersEvaluationService.CheckersEvaluationServiceClient(channel);
             
@@ -66,7 +136,7 @@ namespace App.Client
                 RequestTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now)
             };
 
-            // Mierzenie czasu konwersji planszy
+            // Convert board
             var conversionStopwatch = Stopwatch.StartNew();
             var compressedBoard = ConvertBoardTo32Format(board);
             conversionStopwatch.Stop();
@@ -78,27 +148,21 @@ namespace App.Client
 
             try
             {
-                _performanceTracker.StartRequest(serverAddress);
-                
-                // Mierzenie czasu komunikacji sieciowej
+                // Send request asynchronously
                 var networkStopwatch = Stopwatch.StartNew();
-                var response = client.MinimaxSearch(request);
+                var response = await client.MinimaxSearchAsync(request);
                 networkStopwatch.Stop();
                 long networkTime = networkStopwatch.ElapsedMilliseconds;
                 
-                _performanceTracker.UpdateMetrics(serverAddress, networkTime);
-                
                 totalStopwatch.Stop();
                 long totalTime = totalStopwatch.ElapsedMilliseconds;
-                
-                // Obliczenie czasu obliczeń (całkowity czas minus czas konwersji i komunikacji)
                 long computationTime = totalTime - conversionTime - networkTime;
-                if (computationTime < 0) computationTime = 0; // Na wszelki wypadek
+                if (computationTime < 0) computationTime = 0;
                 
-                Console.WriteLine($"Server {serverAddress} - Total: {totalTime}ms, Network: {networkTime}ms, Computation: {computationTime}ms");
+                Console.WriteLine($"Server {serverAddress} - Total: {totalTime}ms, Network: {networkTime}ms, Computation: {computationTime}ms, Score: {response.Score}");
                 
                 GameLogger.LogMinimaxOperation(
-                    "SendBoardForEvaluation", 
+                    "SendTaskToSpecificServer", 
                     serverAddress, 
                     depth, 
                     isMaximizing, 
@@ -113,7 +177,6 @@ namespace App.Client
             catch (Exception ex)
             {
                 Console.WriteLine($"Error with server {serverAddress}: {ex.Message}");
-                _performanceTracker.MarkServerUnavailable(serverAddress);
                 
                 totalStopwatch.Stop();
                 GameLogger.LogMinimaxOperation(
@@ -127,47 +190,15 @@ namespace App.Client
                     0, 
                     0);
                 
-                // Try another server
-                return RetryWithAnotherServer(board, depth, isMaximizing, serverAddress);
+                throw; // Re-throw to handle at higher level
             }
         }
 
-        private int RetryWithAnotherServer(CheckersBoard board, int depth, bool isMaximizing, string failedServer)
+        // Original method kept for backward compatibility
+        private int SendBoardForEvaluation(CheckersBoard board, int depth, bool isMaximizing)
         {
-            var totalStopwatch = Stopwatch.StartNew();
-            
-            string alternativeServer = _performanceTracker.GetBestServer();
-            if (alternativeServer == failedServer || string.IsNullOrEmpty(alternativeServer))
-            {
-                totalStopwatch.Stop();
-                GameLogger.LogMinimaxOperation(
-                    "RetryFailed", 
-                    "NONE", 
-                    depth, 
-                    isMaximizing, 
-                    totalStopwatch.ElapsedMilliseconds, 
-                    0, 
-                    0, 
-                    0, 
-                    0);
-                throw new Exception("No available servers to handle the request");
-            }
-
-            Console.WriteLine($"Retrying with server {alternativeServer}");
-            
-            totalStopwatch.Stop();
-            GameLogger.LogMinimaxOperation(
-                "RetryWithServer", 
-                alternativeServer, 
-                depth, 
-                isMaximizing, 
-                totalStopwatch.ElapsedMilliseconds, 
-                0, 
-                0, 
-                0, 
-                0);
-                
-            return SendBoardForEvaluation(board, depth, isMaximizing);
+            var serverAddress = GetNextServerAddress();
+            return SendTaskToSpecificServer(board, depth, isMaximizing, serverAddress).Result;
         }
 
         private uint[] ConvertBoardTo32Format(CheckersBoard board)
@@ -175,7 +206,7 @@ namespace App.Client
             uint[] result = new uint[3];
             int fieldIndex = 0;
 
-            // Konwertuj z 8x8 na 32-polowy format
+            // Convert from 8x8 to 32-field format
             for (int row = 0; row < 8; row++)
             {
                 for (int col = 0; col < 8; col++)
@@ -187,7 +218,7 @@ namespace App.Client
                         PieceType piece = board.GetPiece(row, col);
                         byte pieceValue = ConvertPieceTypeToByte(piece);
                         
-                        // Użyj 4 bity na pole (kompatybilne z serwerem)
+                        // Use 4 bits per field (compatible with server)
                         int boardIndex = fieldIndex / 8;
                         int bitPosition = (fieldIndex % 8) * 4;
                         
@@ -224,14 +255,18 @@ namespace App.Client
             };
         }
 
-        public Dictionary<string, (int activeRequests, double avgResponseTime, bool isAvailable)> GetServerStatus()
+        public Dictionary<string, bool> GetServerStatus()
         {
-            return _performanceTracker.GetServerStatus();
+            var status = new Dictionary<string, bool>();
+            foreach (var address in _serverAddresses)
+            {
+                status[address] = _channels.ContainsKey(address) && _channels[address] != null;
+            }
+            return status;
         }
 
         public void Dispose()
         {
-            // Zapisz końcowe podsumowanie przed zamknięciem
             Console.WriteLine("Saving final summary...");
             GameLogger.WriteMinimaxSummary();
             

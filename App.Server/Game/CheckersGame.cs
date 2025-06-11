@@ -56,7 +56,7 @@ public partial class CheckersGame
         _serverAddresses = new List<string>();
     
         // Wyłącz serwery dla testów lokalnych
-        //_serverAddresses.Add("http://192.168.101.9:5001");
+        _serverAddresses.Add("http://192.168.50.79:5001");
         _serverAddresses.Add("http://localhost:5001");
     
         Console.WriteLine("Using LOCAL calculation only (no distributed servers)");
@@ -180,14 +180,28 @@ private void EndGameWithDraw(string reason)
 
 }
 
-    public Dictionary<string, (int activeRequests, double avgResponseTime, bool isAvailable)> GetServerStatus()
+public Dictionary<string, (int activeRequests, double avgResponseTime, bool isAvailable)> GetServerStatus()
+{
+    var result = new Dictionary<string, (int activeRequests, double avgResponseTime, bool isAvailable)>();
+    
+    if (checkersAi != null && checkersAi.GetMinimaxDistributor() != null)
     {
-        if (checkersAi != null && checkersAi.GetMinimaxDistributor() != null)
+        var serverStatus = checkersAi.GetMinimaxDistributor().GetServerStatus();
+        
+        foreach (var kvp in serverStatus)
         {
-            return checkersAi.GetMinimaxDistributor().GetServerStatus();
+            // Convert simple bool status to tuple format
+            result[kvp.Key] = (
+                activeRequests: 0,        // No active request tracking in simplified version
+                avgResponseTime: 0.0,     // No response time tracking in simplified version  
+                isAvailable: kvp.Value
+            );
         }
-        return new Dictionary<string, (int activeRequests, double avgResponseTime, bool isAvailable)>();
     }
+    
+    return result;
+}
+
 
     public void SetServerAddresses(List<string> serverAddresses)
     {
