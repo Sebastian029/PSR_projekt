@@ -17,6 +17,7 @@ namespace App.Client
     {
         private readonly List<string> _serverAddresses;
         private readonly Dictionary<string, GrpcChannel> _channels;
+        private readonly ServerPerformanceTracker _performanceTracker;
         private readonly object _lockObject = new object();
         private int _currentServerIndex = 0;
 
@@ -24,6 +25,7 @@ namespace App.Client
         {
             _serverAddresses = serverAddresses;
             _channels = new Dictionary<string, GrpcChannel>();
+            _performanceTracker = new ServerPerformanceTracker();
             
             var channelOptions = new GrpcChannelOptions
             {
@@ -42,10 +44,17 @@ namespace App.Client
             foreach (var address in _serverAddresses)
             {
                 _channels[address] = GrpcChannel.ForAddress(address, channelOptions);
+                _performanceTracker.RegisterServer(address);
+            }
+            
+            // Sprawdź dostępność wysokiej rozdzielczości
+            if (!Stopwatch.IsHighResolution)
+            {
+                Console.WriteLine("Warning: High-resolution timing not available");
             }
         }
 
-        // Original single task method
+        // Original single task method with precise timing
         public int DistributeMinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
         {
             var totalStopwatch = Stopwatch.StartNew();
@@ -53,12 +62,14 @@ namespace App.Client
             int result = SendBoardForEvaluation(board, depth, isMaximizing);
             
             totalStopwatch.Stop();
+            double totalTimeMs = PreciseTimer.GetElapsedMilliseconds(totalStopwatch);
+            
             GameLogger.LogMinimaxOperation(
                 "DistributeMinimaxSearch", 
                 "ALL", 
                 depth, 
                 isMaximizing, 
-                totalStopwatch.ElapsedMilliseconds, 
+                (long)totalTimeMs, 
                 0, 
                 0, 
                 0, 
@@ -67,7 +78,7 @@ namespace App.Client
             return result;
         }
 
-        // New parallel task distribution method
+        // Parallel task distribution method with precise timing
         public async Task<List<int>> DistributeMultipleMinimaxSearches(
             List<(CheckersBoard board, int depth, bool isMaximizing)> tasks)
         {
@@ -150,11 +161,11 @@ namespace App.Client
                 RequestTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now)
             };
 
-            // Convert board
+            // Precyzyjny pomiar konwersji
             var conversionStopwatch = Stopwatch.StartNew();
             var compressedBoard = ConvertBoardTo32Format(board);
             conversionStopwatch.Stop();
-            long conversionTime = conversionStopwatch.ElapsedMilliseconds;
+            double conversionTimeMs = PreciseTimer.GetElapsedMilliseconds(conversionStopwatch);
             
             request.Board.Add(compressedBoard[0]);
             request.Board.Add(compressedBoard[1]);
@@ -162,28 +173,34 @@ namespace App.Client
 
             try
             {
-                // Send request asynchronously
+                _performanceTracker.StartRequest(serverAddress);
+                
+                // Precyzyjny pomiar czasu komunikacji sieciowej
                 var networkStopwatch = Stopwatch.StartNew();
                 var response = await client.MinimaxSearchAsync(request);
                 networkStopwatch.Stop();
-                long networkTime = networkStopwatch.ElapsedMilliseconds;
+                double networkTimeMs = PreciseTimer.GetElapsedMilliseconds(networkStopwatch);
+                
+                _performanceTracker.UpdateMetrics(serverAddress, networkTimeMs);
                 
                 totalStopwatch.Stop();
-                long totalTime = totalStopwatch.ElapsedMilliseconds;
-                long computationTime = totalTime - conversionTime - networkTime;
-                if (computationTime < 0) computationTime = 0;
+                double totalTimeMs = PreciseTimer.GetElapsedMilliseconds(totalStopwatch);
                 
-                Console.WriteLine($"Server {serverAddress} - Total: {totalTime}ms, Network: {networkTime}ms, Computation: {computationTime}ms, Score: {response.Score}");
+                long serverComputationTimeMs = response.ServerComputationTimeMs;
+                double clientOverheadMs = totalTimeMs - conversionTimeMs - networkTimeMs;
+                if (clientOverheadMs < 0) clientOverheadMs = 0;
+                
+                Console.WriteLine($"Server {serverAddress} - Total: {totalTimeMs:F2}ms, Network: {networkTimeMs:F2}ms, Client overhead: {clientOverheadMs:F2}ms, Score: {response.Score}");
                 
                 GameLogger.LogMinimaxOperation(
                     "SendTaskToSpecificServer", 
                     serverAddress, 
                     depth, 
                     isMaximizing, 
-                    totalTime, 
-                    conversionTime, 
-                    networkTime, 
-                    computationTime, 
+                    (long)totalTimeMs, 
+                    (long)conversionTimeMs, 
+                    (long)networkTimeMs, 
+                    serverComputationTimeMs, 
                     response.Score);
                 
                 return response.Score;
@@ -191,15 +208,17 @@ namespace App.Client
             catch (Exception ex)
             {
                 Console.WriteLine($"Error with server {serverAddress}: {ex.Message}");
+                _performanceTracker.MarkServerUnavailable(serverAddress);
                 
                 totalStopwatch.Stop();
+                double totalTimeMs = PreciseTimer.GetElapsedMilliseconds(totalStopwatch);
                 GameLogger.LogMinimaxOperation(
                     "ServerFailure", 
                     serverAddress, 
                     depth, 
                     isMaximizing, 
-                    totalStopwatch.ElapsedMilliseconds, 
-                    conversionTime, 
+                    (long)totalTimeMs, 
+                    (long)conversionTimeMs, 
                     0, 
                     0, 
                     0);
@@ -208,11 +227,123 @@ namespace App.Client
             }
         }
 
-        // Original method kept for backward compatibility
+        // Original method with precise timing for backward compatibility
         private int SendBoardForEvaluation(CheckersBoard board, int depth, bool isMaximizing)
         {
-            var serverAddress = GetNextServerAddress();
-            return SendTaskToSpecificServer(board, depth, isMaximizing, serverAddress).Result;
+            var totalStopwatch = Stopwatch.StartNew();
+            string serverAddress = _performanceTracker.GetBestServer();
+            var channel = _channels[serverAddress];
+            var client = new CheckersEvaluationService.CheckersEvaluationServiceClient(channel);
+            
+            var request = new MinimaxRequest
+            {
+                Depth = depth,
+                IsMaximizing = isMaximizing,
+                RequestTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now)
+            };
+
+            var conversionStopwatch = Stopwatch.StartNew();
+            var compressedBoard = ConvertBoardTo32Format(board);
+            conversionStopwatch.Stop();
+            double conversionTimeMs = PreciseTimer.GetElapsedMilliseconds(conversionStopwatch);
+            
+            request.Board.Add(compressedBoard[0]);
+            request.Board.Add(compressedBoard[1]);
+            request.Board.Add(compressedBoard[2]);
+
+            try
+            {
+                _performanceTracker.StartRequest(serverAddress);
+                
+                var networkStopwatch = Stopwatch.StartNew();
+                var response = client.MinimaxSearch(request);
+                networkStopwatch.Stop();
+                double networkTimeMs = PreciseTimer.GetElapsedMilliseconds(networkStopwatch);
+                
+                _performanceTracker.UpdateMetrics(serverAddress, networkTimeMs);
+                
+                totalStopwatch.Stop();
+                double totalTimeMs = PreciseTimer.GetElapsedMilliseconds(totalStopwatch);
+                
+                long serverComputationTimeMs = response.ServerComputationTimeMs;
+                double clientOverheadMs = totalTimeMs - conversionTimeMs - networkTimeMs;
+                if (clientOverheadMs < 0) clientOverheadMs = 0;
+                
+                Console.WriteLine($"Server {serverAddress} - Total: {totalTimeMs:F2}ms, Network: {networkTimeMs:F2}ms, Client overhead: {clientOverheadMs:F2}ms");
+                
+                GameLogger.LogMinimaxOperation(
+                    "SendBoardForEvaluation", 
+                    serverAddress, 
+                    depth, 
+                    isMaximizing, 
+                    (long)totalTimeMs, 
+                    (long)conversionTimeMs, 
+                    (long)networkTimeMs, 
+                    serverComputationTimeMs, 
+                    response.Score);
+                
+                return response.Score;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error with server {serverAddress}: {ex.Message}");
+                _performanceTracker.MarkServerUnavailable(serverAddress);
+                
+                totalStopwatch.Stop();
+                double totalTimeMs = PreciseTimer.GetElapsedMilliseconds(totalStopwatch);
+                GameLogger.LogMinimaxOperation(
+                    "ServerFailure", 
+                    serverAddress, 
+                    depth, 
+                    isMaximizing, 
+                    (long)totalTimeMs, 
+                    (long)conversionTimeMs, 
+                    0, 
+                    0, 
+                    0);
+                
+                return RetryWithAnotherServer(board, depth, isMaximizing, serverAddress);
+            }
+        }
+
+        private int RetryWithAnotherServer(CheckersBoard board, int depth, bool isMaximizing, string failedServer)
+        {
+            var totalStopwatch = Stopwatch.StartNew();
+            double totalTimeMs;
+            string alternativeServer = _performanceTracker.GetBestServer();
+            if (alternativeServer == failedServer || string.IsNullOrEmpty(alternativeServer))
+            {
+                totalStopwatch.Stop();
+                totalTimeMs = PreciseTimer.GetElapsedMilliseconds(totalStopwatch);
+                GameLogger.LogMinimaxOperation(
+                    "RetryFailed", 
+                    "NONE", 
+                    depth, 
+                    isMaximizing, 
+                    (long)totalTimeMs, 
+                    0, 
+                    0, 
+                    0, 
+                    0);
+                throw new Exception("No available servers to handle the request");
+            }
+
+            Console.WriteLine($"Retrying with server {alternativeServer}");
+            
+            totalStopwatch.Stop();
+            totalTimeMs = PreciseTimer.GetElapsedMilliseconds(totalStopwatch);
+            GameLogger.LogMinimaxOperation(
+                "RetryWithServer", 
+                alternativeServer, 
+                depth, 
+                isMaximizing, 
+                (long)totalTimeMs, 
+                0, 
+                0, 
+                0, 
+                0);
+                
+            return SendBoardForEvaluation(board, depth, isMaximizing);
         }
 
         private uint[] ConvertBoardTo32Format(CheckersBoard board)
@@ -269,14 +400,9 @@ namespace App.Client
             };
         }
 
-        public Dictionary<string, bool> GetServerStatus()
+        public Dictionary<string, (int activeRequests, double avgResponseTime, bool isAvailable)> GetServerStatus()
         {
-            var status = new Dictionary<string, bool>();
-            foreach (var address in _serverAddresses)
-            {
-                status[address] = _channels.ContainsKey(address) && _channels[address] != null;
-            }
-            return status;
+            return _performanceTracker.GetServerStatus();
         }
 
         public void Dispose()
@@ -289,6 +415,22 @@ namespace App.Client
                 channel?.Dispose();
             }
             _channels.Clear();
+        }
+    }
+
+    // Klasa pomocnicza dla precyzyjnych pomiarów z kodu 2
+    public static class PreciseTimer
+    {
+        public static double GetElapsedMilliseconds(Stopwatch stopwatch)
+        {
+            return (double)stopwatch.ElapsedTicks / Stopwatch.Frequency * 1000;
+        }
+        
+        public static void LogTimingInfo()
+        {
+            Console.WriteLine($"Timer frequency: {Stopwatch.Frequency} Hz");
+            Console.WriteLine($"High resolution: {Stopwatch.IsHighResolution}");
+            Console.WriteLine($"Precision: {(double)1 / Stopwatch.Frequency * 1000000:F2} microseconds");
         }
     }
 }

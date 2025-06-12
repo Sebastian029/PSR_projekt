@@ -48,7 +48,8 @@ namespace MinimaxServer.Services
             return Task.FromResult(new MinimaxResponse 
             { 
                 Score = score, 
-                ResponseTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now)
+                ResponseTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now),
+                ServerComputationTimeMs = stopwatch.ElapsedMilliseconds
             });
         }
     }

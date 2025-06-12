@@ -20,4 +20,5 @@ message MinimaxRequest {
 message MinimaxResponse {
   int32 score = 1;
   google.protobuf.Timestamp response_time = 2;
+  int64 server_computation_time_ms = 3;
 }
