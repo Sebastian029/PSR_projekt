@@ -33,27 +33,19 @@ namespace App.Client
 
         public int DistributeMinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
         {
-            var totalStopwatch = Stopwatch.StartNew();
-            
+            // POPRAWKA: Usuń nakładający się pomiar - pomiar będzie w SendBoardForEvaluation
             int result = SendBoardForEvaluation(board, depth, isMaximizing);
-            
-            totalStopwatch.Stop();
-            GameLogger.LogMinimaxOperation(
-                "DistributeMinimaxSearch", 
-                "ALL", 
-                depth, 
-                isMaximizing, 
-                totalStopwatch.ElapsedMilliseconds, 
-                0, 
-                0, 
-                0, 
-                result);
-            
             return result;
         }
 
         private int SendBoardForEvaluation(CheckersBoard board, int depth, bool isMaximizing)
         {
+            // Sprawdź dostępność wysokiej rozdzielczości
+            if (!Stopwatch.IsHighResolution)
+            {
+                Console.WriteLine("Warning: High-resolution timing not available");
+            }
+
             var totalStopwatch = Stopwatch.StartNew();
             string serverAddress = _performanceTracker.GetBestServer();
             var channel = _channels[serverAddress];
@@ -66,11 +58,11 @@ namespace App.Client
                 RequestTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now)
             };
 
-            // Mierzenie czasu konwersji planszy
+            // POPRAWKA: Użyj ElapsedTicks dla większej precyzji
             var conversionStopwatch = Stopwatch.StartNew();
             var compressedBoard = ConvertBoardTo32Format(board);
             conversionStopwatch.Stop();
-            long conversionTime = conversionStopwatch.ElapsedMilliseconds;
+            double conversionTimeMs = (double)conversionStopwatch.ElapsedTicks / Stopwatch.Frequency * 1000;
             
             request.Board.Add(compressedBoard[0]);
             request.Board.Add(compressedBoard[1]);
@@ -80,32 +72,33 @@ namespace App.Client
             {
                 _performanceTracker.StartRequest(serverAddress);
                 
-                // Mierzenie czasu komunikacji sieciowej
+                // POPRAWKA: Precyzyjny pomiar czasu komunikacji sieciowej
                 var networkStopwatch = Stopwatch.StartNew();
                 var response = client.MinimaxSearch(request);
                 networkStopwatch.Stop();
-                long networkTime = networkStopwatch.ElapsedMilliseconds;
+                double networkTimeMs = (double)networkStopwatch.ElapsedTicks / Stopwatch.Frequency * 1000;
                 
-                _performanceTracker.UpdateMetrics(serverAddress, networkTime);
+                _performanceTracker.UpdateMetrics(serverAddress, networkTimeMs);
                 
                 totalStopwatch.Stop();
-                long totalTime = totalStopwatch.ElapsedMilliseconds;
+                double totalTimeMs = (double)totalStopwatch.ElapsedTicks / Stopwatch.Frequency * 1000;
                 
-                // Obliczenie czasu obliczeń (całkowity czas minus czas konwersji i komunikacji)
-                long computationTime = totalTime - conversionTime - networkTime;
-                if (computationTime < 0) computationTime = 0; // Na wszelki wypadek
+                // POPRAWKA: Zmień interpretację - to jest client overhead, nie computation time
+                long serverComputationTimeMs = response.ServerComputationTimeMs;
+                double clientOverheadMs = totalTimeMs - conversionTimeMs - networkTimeMs;
+                if (clientOverheadMs < 0) clientOverheadMs = 0;
                 
-                Console.WriteLine($"Server {serverAddress} - Total: {totalTime}ms, Network: {networkTime}ms, Computation: {computationTime}ms");
+                Console.WriteLine($"Server {serverAddress} - Total: {totalTimeMs:F2}ms, Network: {networkTimeMs:F2}ms, Client overhead: {clientOverheadMs:F2}ms");
                 
                 GameLogger.LogMinimaxOperation(
                     "SendBoardForEvaluation", 
                     serverAddress, 
                     depth, 
                     isMaximizing, 
-                    totalTime, 
-                    conversionTime, 
-                    networkTime, 
-                    computationTime, 
+                    (long)totalTimeMs, 
+                    (long)conversionTimeMs, 
+                    (long)networkTimeMs, 
+                    (long)serverComputationTimeMs, // Zmieniona nazwa z computationTime
                     response.Score);
                 
                 return response.Score;
@@ -116,13 +109,14 @@ namespace App.Client
                 _performanceTracker.MarkServerUnavailable(serverAddress);
                 
                 totalStopwatch.Stop();
+                double totalTimeMs = (double)totalStopwatch.ElapsedTicks / Stopwatch.Frequency * 1000;
                 GameLogger.LogMinimaxOperation(
                     "ServerFailure", 
                     serverAddress, 
                     depth, 
                     isMaximizing, 
-                    totalStopwatch.ElapsedMilliseconds, 
-                    conversionTime, 
+                    (long)totalTimeMs, 
+                    (long)conversionTimeMs, 
                     0, 
                     0, 
                     0);
@@ -135,17 +129,19 @@ namespace App.Client
         private int RetryWithAnotherServer(CheckersBoard board, int depth, bool isMaximizing, string failedServer)
         {
             var totalStopwatch = Stopwatch.StartNew();
+            double totalTimeMs;
             
             string alternativeServer = _performanceTracker.GetBestServer();
             if (alternativeServer == failedServer || string.IsNullOrEmpty(alternativeServer))
             {
                 totalStopwatch.Stop();
+                totalTimeMs = (double)totalStopwatch.ElapsedTicks / Stopwatch.Frequency * 1000;
                 GameLogger.LogMinimaxOperation(
                     "RetryFailed", 
                     "NONE", 
                     depth, 
                     isMaximizing, 
-                    totalStopwatch.ElapsedMilliseconds, 
+                    (long)totalTimeMs, 
                     0, 
                     0, 
                     0, 
@@ -156,12 +152,13 @@ namespace App.Client
             Console.WriteLine($"Retrying with server {alternativeServer}");
             
             totalStopwatch.Stop();
+            totalTimeMs = (double)totalStopwatch.ElapsedTicks / Stopwatch.Frequency * 1000;
             GameLogger.LogMinimaxOperation(
                 "RetryWithServer", 
                 alternativeServer, 
                 depth, 
                 isMaximizing, 
-                totalStopwatch.ElapsedMilliseconds, 
+                (long)totalTimeMs, 
                 0, 
                 0, 
                 0, 
@@ -240,6 +237,22 @@ namespace App.Client
                 channel?.Dispose();
             }
             _channels.Clear();
+        }
+    }
+
+    // DODATKOWA KLASA POMOCNICZA dla precyzyjnych pomiarów
+    public static class PreciseTimer
+    {
+        public static double GetElapsedMilliseconds(Stopwatch stopwatch)
+        {
+            return (double)stopwatch.ElapsedTicks / Stopwatch.Frequency * 1000;
+        }
+        
+        public static void LogTimingInfo()
+        {
+            Console.WriteLine($"Timer frequency: {Stopwatch.Frequency} Hz");
+            Console.WriteLine($"High resolution: {Stopwatch.IsHighResolution}");
+            Console.WriteLine($"Precision: {(double)1 / Stopwatch.Frequency * 1000000:F2} microseconds");
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿// Utilities/GameLogger.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -20,7 +19,7 @@ public static class GameLogger
     private static int _totalRequests = 0;
     private static Dictionary<int, (long totalTime, int count)> _depthStatistics = new Dictionary<int, (long, int)>();
     private static HashSet<string> _activeServers = new HashSet<string>();
-    private static int _currentGranulation = 1; // Domyślna wartość
+    private static int _currentGranulation = 1;
     private static DateTime _sessionStartTime = DateTime.Now;
 
     static GameLogger()
@@ -52,6 +51,7 @@ public static class GameLogger
         }
     }
 
+    // GŁÓWNA POPRAWKA: Usunięto błędne dzielenie przez 1000
     public static void LogGame(int depth, int granulation, double gameTimeSeconds)
     {
         lock (LogLock)
@@ -59,9 +59,10 @@ public static class GameLogger
             // Zapisujemy granulację na potrzeby podsumowania
             _currentGranulation = granulation;
             
+            // POPRAWKA: gameTimeSeconds już jest w sekundach, nie dzielimy przez 1000
             var line = string.Format(CultureInfo.InvariantCulture,
                 "{0};{1};{2:F2}\n",
-                depth, granulation, gameTimeSeconds / 1000);
+                depth, granulation, gameTimeSeconds); // USUNIĘTO: / 1000
 
             File.AppendAllText(GameLogFilePath, line);
         }
@@ -108,8 +109,6 @@ public static class GameLogger
                 string logEntry = $"{timestamp};{operation};{server};{depth};{isMaximizing};" +
                     $"{totalTimeMs};{conversionTimeMs};{networkTimeMs};{computationTimeMs};{result}\n";
                 File.AppendAllText(MinimaxPerformanceLogPath, logEntry);
-                
-                // Usunięto automatyczne zapisywanie co 100 zapytań
             }
         }
         catch (Exception ex)
@@ -135,6 +134,10 @@ public static class GameLogger
                 
                 // Zapisz do pliku CSV (nowy format)
                 WriteMinimaxSummaryToCsv();
+                
+                ResetStatistics(); // Resetujemy statystyki po zapisie
+                
+                Console.WriteLine("Minimax summary zapisane");
             }
         }
         catch (Exception ex)
@@ -204,8 +207,8 @@ public static class GameLogger
         
         File.AppendAllText(MinimaxSummaryCsvPath, csvLine);
     }
-    
-    // Metoda do resetowania statystyk po zapisaniu podsumowania (opcjonalnie)
+
+    // Dodane metody pomocnicze
     public static void ResetStatistics()
     {
         lock (LogLock)
@@ -216,50 +219,6 @@ public static class GameLogger
             _depthStatistics.Clear();
             _activeServers.Clear();
             _sessionStartTime = DateTime.Now;
-        }
-    }
-    
-    // Metoda do rejestrowania listy serwerów (można wywołać przy inicjalizacji dystrybutora)
-    public static void RegisterServers(IEnumerable<string> serverAddresses)
-    {
-        lock (LogLock)
-        {
-            foreach (var server in serverAddresses)
-            {
-                _activeServers.Add(server);
-            }
-        }
-    }
-    
-    public static (long computationTime, long communicationTime, int requests) GetMinimaxStatistics()
-    {
-        lock (LogLock)
-        {
-            return (_totalComputationTime, _totalCommunicationTime, _totalRequests);
-        }
-    }
-    
-    public static Dictionary<int, (long totalTime, int count)> GetDepthStatistics()
-    {
-        lock (LogLock)
-        {
-            return new Dictionary<int, (long, int)>(_depthStatistics);
-        }
-    }
-    
-    public static int GetActiveServerCount()
-    {
-        lock (LogLock)
-        {
-            return _activeServers.Count;
-        }
-    }
-    
-    public static int GetCurrentGranulation()
-    {
-        lock (LogLock)
-        {
-            return _currentGranulation;
         }
     }
 }
