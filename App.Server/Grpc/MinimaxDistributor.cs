@@ -25,9 +25,23 @@ namespace App.Client
             _serverAddresses = serverAddresses;
             _channels = new Dictionary<string, GrpcChannel>();
             
+            var channelOptions = new GrpcChannelOptions
+            {
+                MaxReceiveMessageSize = 4 * 1024 * 1024, // 4MB
+                MaxSendMessageSize = 4 * 1024 * 1024,    // 4MB
+                HttpHandler = new SocketsHttpHandler
+                {
+                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
+                    KeepAlivePingDelay = TimeSpan.FromSeconds(60),
+                    KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
+                    EnableMultipleHttp2Connections = true,
+                    MaxConnectionsPerServer = 10
+                }
+            };
+            
             foreach (var address in _serverAddresses)
             {
-                _channels[address] = GrpcChannel.ForAddress(address);
+                _channels[address] = GrpcChannel.ForAddress(address, channelOptions);
             }
         }
 

@@ -4,6 +4,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using App.Server;
 using App.GrpcServer;
+using System.Collections.Generic;
+using Grpc.Core;
+using Grpc.Net.Compression;
 
 namespace MinimaxServer
 {
@@ -26,7 +29,18 @@ namespace MinimaxServer
     {
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddGrpc();
+            services.AddGrpc(options =>
+            {
+                options.MaxReceiveMessageSize = 4 * 1024 * 1024; // 4MB
+                options.MaxSendMessageSize = 4 * 1024 * 1024;    // 4MB
+                options.EnableDetailedErrors = true;
+                options.CompressionProviders = new List<ICompressionProvider>
+                {
+                    new GzipCompressionProvider(System.IO.Compression.CompressionLevel.Fastest)
+                };
+                options.ResponseCompressionAlgorithm = "gzip";
+                options.ResponseCompressionLevel = System.IO.Compression.CompressionLevel.Fastest;
+            });
             services.AddSingleton<IBoardEvaluator, Evaluator>();
         }
 
