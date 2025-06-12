@@ -45,82 +45,50 @@ namespace App.Client
             }
         }
 
-        // Original single task method
-        public int DistributeMinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
-        {
-            var totalStopwatch = Stopwatch.StartNew();
-            
-            int result = SendBoardForEvaluation(board, depth, isMaximizing);
-            
-            totalStopwatch.Stop();
-            GameLogger.LogMinimaxOperation(
-                "DistributeMinimaxSearch", 
-                "ALL", 
-                depth, 
-                isMaximizing, 
-                totalStopwatch.ElapsedMilliseconds, 
-                0, 
-                0, 
-                0, 
-                result);
-            
-            return result;
-        }
-
-        // New parallel task distribution method
-        public async Task<List<int>> DistributeMultipleMinimaxSearches(
-            List<(CheckersBoard board, int depth, bool isMaximizing)> tasks)
-        {
-            var taskList = new List<Task<int>>();
-            
-            // Send tasks to servers in round-robin fashion
-            for (int i = 0; i < tasks.Count; i++)
-            {
-                var task = tasks[i];
-                var serverAddress = GetNextServerAddress();
-                
-                taskList.Add(SendTaskToSpecificServer(task.board, task.depth, task.isMaximizing, serverAddress));
-            }
-            
-            // Wait for all results
-            var results = await Task.WhenAll(taskList);
-            return results.ToList();
-        }
-
-        // Round-robin with continuous task processing
         public async Task<List<int>> ProcessTasksWithRoundRobin(
             List<(CheckersBoard board, int depth, bool isMaximizing)> allTasks)
         {
-            var results = new ConcurrentBag<int>();
-            var activeTasks = new Dictionary<string, Task<int>>();
-            var taskQueue = new Queue<(CheckersBoard, int, bool)>(allTasks);
+            // Use array to maintain order instead of ConcurrentBag
+            var results = new int[allTasks.Count];
+            var activeTasks = new Dictionary<string, (Task<int> task, int index)>();
+            var taskQueue = new Queue<(CheckersBoard, int, bool, int)>();
+            
+            // Add indices to maintain order
+            for (int i = 0; i < allTasks.Count; i++)
+            {
+                var task = allTasks[i];
+                taskQueue.Enqueue((task.board, task.depth, task.isMaximizing, i));
+            }
             
             // Initially send one task to each server
             foreach (var serverAddress in _serverAddresses)
             {
                 if (taskQueue.Count > 0)
                 {
-                    var task = taskQueue.Dequeue();
-                    activeTasks[serverAddress] = SendTaskToSpecificServer(task.Item1, task.Item2, task.Item3, serverAddress);
+                    var (board, depth, isMaximizing, index) = taskQueue.Dequeue();
+                    var task = SendTaskToSpecificServer(board, depth, isMaximizing, serverAddress);
+                    activeTasks[serverAddress] = (task, index);
                 }
             }
             
             // Process remaining tasks as servers become available
             while (activeTasks.Count > 0)
             {
-                var completedTask = await Task.WhenAny(activeTasks.Values);
-                var completedServer = activeTasks.First(kvp => kvp.Value == completedTask).Key;
+                var completedTaskPair = await Task.WhenAny(activeTasks.Values.Select(x => x.task));
+                var completedEntry = activeTasks.First(kvp => kvp.Value.task == completedTaskPair);
+                var completedServer = completedEntry.Key;
+                var resultIndex = completedEntry.Value.index;
                 
-                // Collect result
-                results.Add(await completedTask);
+                // Store result at correct index to maintain order
+                results[resultIndex] = await completedTaskPair;
                 activeTasks.Remove(completedServer);
                 
                 // Send next task to the now-free server
                 if (taskQueue.Count > 0)
                 {
-                    var nextTask = taskQueue.Dequeue();
-                    activeTasks[completedServer] = SendTaskToSpecificServer(
-                        nextTask.Item1, nextTask.Item2, nextTask.Item3, completedServer);
+                    var (board, depth, isMaximizing, index) = taskQueue.Dequeue();
+                    var nextTask = SendTaskToSpecificServer(board, depth, isMaximizing, completedServer);
+                    activeTasks[completedServer] = (nextTask, index);
                 }
             }
             
@@ -147,7 +115,8 @@ namespace App.Client
             {
                 Depth = depth,
                 IsMaximizing = isMaximizing,
-                RequestTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now)
+                // Use deterministic timestamp instead of DateTimeOffset.Now
+                RequestTime = Timestamp.FromDateTimeOffset(DateTimeOffset.UnixEpoch)
             };
 
             // Convert board
@@ -208,13 +177,6 @@ namespace App.Client
             }
         }
 
-        // Original method kept for backward compatibility
-        private int SendBoardForEvaluation(CheckersBoard board, int depth, bool isMaximizing)
-        {
-            var serverAddress = GetNextServerAddress();
-            return SendTaskToSpecificServer(board, depth, isMaximizing, serverAddress).Result;
-        }
-
         private uint[] ConvertBoardTo32Format(CheckersBoard board)
         {
             uint[] result = new uint[3];
@@ -267,6 +229,51 @@ namespace App.Client
                 PieceType.BlackKing => 4,
                 _ => 0
             };
+        }
+
+        // Validation method for determinism testing
+        public async Task<bool> ValidateDeterminism(CheckersBoard board, int depth, bool isMaximizing, int iterations = 3)
+        {
+            var results = new List<List<int>>();
+            
+            for (int i = 0; i < iterations; i++)
+            {
+                var tasks = new List<(CheckersBoard, int, bool)> { (board, depth, isMaximizing) };
+                var result = await ProcessTasksWithRoundRobin(tasks);
+                results.Add(result);
+                
+                Console.WriteLine($"Iteration {i + 1}: Score = {result[0]}");
+            }
+            
+            // Check if all results are identical
+            var firstResult = results[0];
+            bool allIdentical = results.All(r => r.SequenceEqual(firstResult));
+            
+            Console.WriteLine($"Determinism test: {(allIdentical ? "PASSED" : "FAILED")}");
+            return allIdentical;
+        }
+
+        // Batch validation for multiple board states
+        public async Task<bool> ValidateBatchDeterminism(
+            List<(CheckersBoard board, int depth, bool isMaximizing)> tasks, 
+            int iterations = 2)
+        {
+            var allResults = new List<List<int>>();
+            
+            for (int i = 0; i < iterations; i++)
+            {
+                var result = await ProcessTasksWithRoundRobin(tasks);
+                allResults.Add(result);
+                
+                Console.WriteLine($"Batch iteration {i + 1}: Results = [{string.Join(", ", result)}]");
+            }
+            
+            // Check if all batch results are identical
+            var firstBatch = allResults[0];
+            bool allBatchesIdentical = allResults.All(batch => batch.SequenceEqual(firstBatch));
+            
+            Console.WriteLine($"Batch determinism test: {(allBatchesIdentical ? "PASSED" : "FAILED")}");
+            return allBatchesIdentical;
         }
 
         public Dictionary<string, bool> GetServerStatus()

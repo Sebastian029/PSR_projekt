@@ -27,7 +27,7 @@ namespace MinimaxServer
                         if (fieldIndex >= 32) break;
 
                         PieceType piece = GetPieceFromCompressedBoard(compressedBoard, fieldIndex);
-                        board.SetPiece(row, col, (PieceType)piece);
+                        board.SetPiece(row, col, (App.Server.PieceType)piece);
                         fieldIndex++;
                     }
                 }

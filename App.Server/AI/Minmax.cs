@@ -1,6 +1,6 @@
-﻿// Minimax.cs
-using App.Server;
+﻿using App.Server;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -12,13 +12,15 @@ public class Minimax
     private readonly IBoardEvaluator _evaluator;
     private readonly MinimaxDistributor _distributor;
     private readonly int _granulationDepth;
+    private readonly int _parallelThreshold;
 
-    public Minimax(int depth, int granulationDepth, IBoardEvaluator evaluator, MinimaxDistributor distributor = null)
+    public Minimax(int depth, int granulationDepth, IBoardEvaluator evaluator, MinimaxDistributor distributor = null, int parallelThreshold = 4)
     {
         _maxDepth = depth;
         _evaluator = evaluator;
         _distributor = distributor;
         _granulationDepth = granulationDepth;
+        _parallelThreshold = parallelThreshold;
     }
 
     public (int fromRow, int fromCol, int toRow, int toCol) GetBestMove(CheckersBoard board, List<(int fromRow, int fromCol, int toRow, int toCol)> moves, bool isWhiteTurn)
@@ -31,15 +33,15 @@ public class Minimax
 
         Console.WriteLine($"GAME: Processing {moves.Count} moves at depth={_maxDepth}, granulation={_granulationDepth}");
         
-        var tasks = new List<Task<int>>();
         var validMoves = new List<(int fromRow, int fromCol, int toRow, int toCol)>();
+        var distributedTasks = new List<(CheckersBoard, int, bool)>();
 
-        // Walidacja i tworzenie zadań
+        // Prepare and validate moves
         foreach (var move in moves)
         {
             try
             {
-                // Walidacja współrzędnych
+                // Validate coordinates
                 if (move.fromRow < 0 || move.fromRow >= 8 || move.fromCol < 0 || move.fromCol >= 8 ||
                     move.toRow < 0 || move.toRow >= 8 || move.toCol < 0 || move.toCol >= 8)
                 {
@@ -54,7 +56,7 @@ public class Minimax
                     continue;
                 }
 
-                // Test czy ruch jest możliwy
+                // Test if move is possible
                 var piece = simulated.GetPiece(move.fromRow, move.fromCol);
                 if (piece == PieceType.Empty)
                 {
@@ -64,22 +66,7 @@ public class Minimax
 
                 simulated.MovePiece(move.fromRow, move.fromCol, move.toRow, move.toCol);
                 validMoves.Add(move);
-
-                // Utwórz zadanie z zabezpieczeniem
-                var task = Task.Run(() => {
-                    try
-                    {
-                        var boardCopy = board.Clone();
-                        boardCopy.MovePiece(move.fromRow, move.fromCol, move.toRow, move.toCol);
-                        return MinimaxSearch(boardCopy, _maxDepth - 1, !isWhiteTurn, _granulationDepth);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error in task for move ({move.fromRow},{move.fromCol}) to ({move.toRow},{move.toCol}): {ex.Message}");
-                        return isWhiteTurn ? int.MinValue : int.MaxValue; // Najgorszy możliwy wynik
-                    }
-                });
-                tasks.Add(task);
+                distributedTasks.Add((simulated, _maxDepth - 1, !isWhiteTurn));
             }
             catch (Exception ex)
             {
@@ -87,37 +74,28 @@ public class Minimax
             }
         }
 
-        if (tasks.Count == 0 || validMoves.Count == 0)
+        if (distributedTasks.Count == 0 || validMoves.Count == 0)
         {
             Console.WriteLine("No valid moves found");
             return (-1, -1, -1, -1);
         }
 
-        try
-        {
-            Task.WaitAll(tasks.ToArray());
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error waiting for tasks: {ex.Message}");
-            // Kontynuuj z dostępnymi wynikami
-        }
+        // Process moves using parallel distribution
+        List<int> results = ProcessMovesWithParallelDistribution(distributedTasks, isWhiteTurn);
 
+        // Find best move
         int bestScore = isWhiteTurn ? int.MinValue : int.MaxValue;
         (int fromRow, int fromCol, int toRow, int toCol) bestMove = (-1, -1, -1, -1);
         
-        for (int i = 0; i < Math.Min(tasks.Count, validMoves.Count); i++)
+        for (int i = 0; i < Math.Min(results.Count, validMoves.Count); i++)
         {
             try
             {
-                if (tasks[i].IsCompletedSuccessfully)
+                int score = results[i];
+                if ((isWhiteTurn && score > bestScore) || (!isWhiteTurn && score < bestScore))
                 {
-                    int score = tasks[i].Result;
-                    if ((isWhiteTurn && score > bestScore) || (!isWhiteTurn && score < bestScore))
-                    {
-                        bestScore = score;
-                        bestMove = validMoves[i];
-                    }
+                    bestScore = score;
+                    bestMove = validMoves[i];
                 }
             }
             catch (Exception ex)
@@ -136,6 +114,95 @@ public class Minimax
         return GetBestMove(board, moves, isWhiteTurn);
     }
 
+    private List<int> ProcessMovesWithParallelDistribution(List<(CheckersBoard board, int depth, bool isMaximizing)> tasks, bool isWhiteTurn)
+    {
+        try
+        {
+            if (_distributor != null && tasks.Count >= _parallelThreshold)
+            {
+                Console.WriteLine($"GAME: Using distributed processing for {tasks.Count} tasks");
+                var resultTask = _distributor.ProcessTasksWithRoundRobin(tasks);
+                resultTask.Wait();
+                return resultTask.Result;
+            }
+            else
+            {
+                Console.WriteLine($"GAME: Using parallel local processing for {tasks.Count} tasks");
+                return ProcessMovesWithParallelLocal(tasks, isWhiteTurn);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in distributed processing: {ex.Message}");
+            return ProcessMovesWithParallelLocal(tasks, isWhiteTurn);
+        }
+    }
+
+    private List<int> ProcessMovesWithParallelLocal(List<(CheckersBoard board, int depth, bool isMaximizing)> tasks, bool isWhiteTurn)
+    {
+        var results = new ConcurrentBag<(int index, int score)>();
+        var parallelOptions = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = Environment.ProcessorCount
+        };
+
+        try
+        {
+            Parallel.For(0, tasks.Count, parallelOptions, i =>
+            {
+                try
+                {
+                    var task = tasks[i];
+                    int score = MinimaxSearch(task.board, task.depth, task.isMaximizing, _granulationDepth);
+                    results.Add((i, score));
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error in parallel local task {i}: {ex.Message}");
+                    results.Add((i, isWhiteTurn ? int.MinValue : int.MaxValue));
+                }
+            });
+
+            // Convert concurrent bag to ordered list
+            var orderedResults = results.OrderBy(r => r.index).Select(r => r.score).ToList();
+            
+            // Fill any missing results
+            while (orderedResults.Count < tasks.Count)
+            {
+                orderedResults.Add(isWhiteTurn ? int.MinValue : int.MaxValue);
+            }
+
+            return orderedResults;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in parallel processing: {ex.Message}");
+            // Fallback to sequential processing
+            return ProcessMovesSequentially(tasks, isWhiteTurn);
+        }
+    }
+
+    private List<int> ProcessMovesSequentially(List<(CheckersBoard board, int depth, bool isMaximizing)> tasks, bool isWhiteTurn)
+    {
+        var results = new List<int>();
+        
+        foreach (var task in tasks)
+        {
+            try
+            {
+                int score = MinimaxSearch(task.board, task.depth, task.isMaximizing, _granulationDepth);
+                results.Add(score);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in sequential task processing: {ex.Message}");
+                results.Add(isWhiteTurn ? int.MinValue : int.MaxValue);
+            }
+        }
+        
+        return results;
+    }
+
     public int MinimaxSearch(CheckersBoard board, int depth, bool isMaximizing, int granulationDepth)
     {
         try
@@ -145,24 +212,35 @@ public class Minimax
 
             int currentLayer = _maxDepth - depth;
 
+            // Use distributed processing at specified granulation level
             if (_distributor != null && currentLayer >= granulationDepth)
             {
-                Console.WriteLine($"GAME: Distributing at Depth={depth}, Layer={currentLayer}, Granulation={granulationDepth}");
-                return _distributor.DistributeMinimaxSearch(board, depth, isMaximizing);
+                return ProcessLayerWithDistribution(board, depth, isMaximizing, granulationDepth);
             }
 
-            MoveGenerator gen = new MoveGenerator();
-            var caps = gen.GetMandatoryCaptures(board, isMaximizing);
-            var allMoves = caps.Count > 0
-                ? gen.GetCaptureMoves(caps)
-                : gen.GetAllValidMoves(board, isMaximizing);
+            // Use parallel local processing for deeper levels
+            return ProcessLayerWithParallelLocal(board, depth, isMaximizing, granulationDepth);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in MinimaxSearch: {ex.Message}");
+            return _evaluator.EvaluateBoard(board, isMaximizing);
+        }
+    }
 
+    private int ProcessLayerWithDistribution(CheckersBoard board, int depth, bool isMaximizing, int granulationDepth)
+    {
+        try
+        {
+            Console.WriteLine($"GAME: Distributing at Depth={depth}, Layer={_maxDepth - depth}, Granulation={granulationDepth}");
+            
+            var (allMoves, isCapture) = GetAllValidMovesForBoard(board, isMaximizing);
+            
             if (allMoves.Count == 0)
-            {
                 return _evaluator.EvaluateBoard(board, isMaximizing);
-            }
 
-            var localTasks = new List<Task<int>>();
+            // Create distributed tasks for ALL moves at this level
+            var distributedTasks = new List<(CheckersBoard, int, bool)>();
             
             foreach (var (fromRow, fromCol, toRow, toCol) in allMoves)
             {
@@ -171,66 +249,136 @@ public class Minimax
                     CheckersBoard simulated = board.Clone();
                     if (simulated == null) continue;
 
-                    if (caps.Count > 0)
+                    if (isCapture)
                         new CaptureSimulator().SimulateCapture(simulated, fromRow, fromCol, toRow, toCol);
                     else
                         simulated.MovePiece(fromRow, fromCol, toRow, toCol);
 
-                    localTasks.Add(Task.Run(() => {
-                        try
-                        {
-                            return MinimaxSearch(simulated, depth - 1, !isMaximizing, granulationDepth);
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"Error in recursive minimax: {ex.Message}");
-                            return isMaximizing ? int.MinValue : int.MaxValue;
-                        }
-                    }));
+                    distributedTasks.Add((simulated, depth - 1, !isMaximizing));
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error creating task for move ({fromRow},{fromCol}) to ({toRow},{toCol}): {ex.Message}");
+                    Console.WriteLine($"Error creating distributed task: {ex.Message}");
                 }
             }
 
-            if (localTasks.Count == 0)
-            {
+            if (distributedTasks.Count == 0)
                 return _evaluator.EvaluateBoard(board, isMaximizing);
-            }
 
-            try
-            {
-                Task.WaitAll(localTasks.ToArray());
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error waiting for local tasks: {ex.Message}");
-            }
-
-            int bestLocalEval = isMaximizing ? int.MinValue : int.MaxValue;
-            foreach (var task in localTasks)
-            {
-                try
-                {
-                    if (task.IsCompletedSuccessfully)
-                    {
-                        int eval = task.Result;
-                        bestLocalEval = isMaximizing ? Math.Max(bestLocalEval, eval) : Math.Min(bestLocalEval, eval);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error getting task result: {ex.Message}");
-                }
-            }
-
-            return bestLocalEval;
+            // Use distributor for ALL moves
+            var resultTask = _distributor.ProcessTasksWithRoundRobin(distributedTasks);
+            resultTask.Wait();
+            var results = resultTask.Result;
+            
+            return isMaximizing ? results.Max() : results.Min();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error in MinimaxSearch: {ex.Message}");
+            Console.WriteLine($"Error in distributed layer processing: {ex.Message}");
             return _evaluator.EvaluateBoard(board, isMaximizing);
+        }
+    }
+
+    private int ProcessLayerWithParallelLocal(CheckersBoard board, int depth, bool isMaximizing, int granulationDepth)
+    {
+        try
+        {
+            var (allMoves, isCapture) = GetAllValidMovesForBoard(board, isMaximizing);
+
+            if (allMoves.Count == 0)
+                return _evaluator.EvaluateBoard(board, isMaximizing);
+
+            // Use parallel processing for multiple moves
+            if (allMoves.Count >= _parallelThreshold)
+            {
+                var results = new ConcurrentBag<int>();
+                var parallelOptions = new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = Environment.ProcessorCount
+                };
+
+                Parallel.ForEach(allMoves, parallelOptions, move =>
+                {
+                    try
+                    {
+                        CheckersBoard simulated = board.Clone();
+                        if (simulated != null)
+                        {
+                            if (isCapture)
+                                new CaptureSimulator().SimulateCapture(simulated, move.fromRow, move.fromCol, move.toRow, move.toCol);
+                            else
+                                simulated.MovePiece(move.fromRow, move.fromCol, move.toRow, move.toCol);
+
+                            int score = MinimaxSearch(simulated, depth - 1, !isMaximizing, granulationDepth);
+                            results.Add(score);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error in parallel move processing: {ex.Message}");
+                        results.Add(isMaximizing ? int.MinValue : int.MaxValue);
+                    }
+                });
+
+                var resultList = results.ToList();
+                return resultList.Count > 0 ? (isMaximizing ? resultList.Max() : resultList.Min()) : _evaluator.EvaluateBoard(board, isMaximizing);
+            }
+            else
+            {
+                // Sequential processing for small number of moves
+                int bestEval = isMaximizing ? int.MinValue : int.MaxValue;
+                
+                foreach (var (fromRow, fromCol, toRow, toCol) in allMoves)
+                {
+                    try
+                    {
+                        CheckersBoard simulated = board.Clone();
+                        if (simulated == null) continue;
+
+                        if (isCapture)
+                            new CaptureSimulator().SimulateCapture(simulated, fromRow, fromCol, toRow, toCol);
+                        else
+                            simulated.MovePiece(fromRow, fromCol, toRow, toCol);
+
+                        int eval = MinimaxSearch(simulated, depth - 1, !isMaximizing, granulationDepth);
+                        bestEval = isMaximizing ? Math.Max(bestEval, eval) : Math.Min(bestEval, eval);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error processing move ({fromRow},{fromCol}) to ({toRow},{toCol}): {ex.Message}");
+                    }
+                }
+
+                return bestEval;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in parallel local layer processing: {ex.Message}");
+            return _evaluator.EvaluateBoard(board, isMaximizing);
+        }
+    }
+
+    private (List<(int fromRow, int fromCol, int toRow, int toCol)> moves, bool isCapture) GetAllValidMovesForBoard(CheckersBoard board, bool isMaximizing)
+    {
+        try
+        {
+            MoveGenerator gen = new MoveGenerator();
+            var caps = gen.GetMandatoryCaptures(board, isMaximizing);
+            
+            if (caps.Count > 0)
+            {
+                return (gen.GetCaptureMoves(caps), true);
+            }
+            else
+            {
+                return (gen.GetAllValidMoves(board, isMaximizing), false);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting valid moves: {ex.Message}");
+            return (new List<(int, int, int, int)>(), false);
         }
     }
 }
