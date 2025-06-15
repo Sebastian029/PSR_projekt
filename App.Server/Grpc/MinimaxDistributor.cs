@@ -145,8 +145,8 @@ namespace App.Client
                 
                 totalStopwatch.Stop();
                 double totalTimeMs = PreciseTimer.GetElapsedMilliseconds(totalStopwatch);
-                double computationTimeMs = totalTimeMs - conversionTimeMs - networkTimeMs;
-                if (computationTimeMs < 0) computationTimeMs = 0;
+                double computationTimeMs = response.ServerComputationTimeMs;
+                // if (computationTimeMs < 0) computationTimeMs = 0;
                 
                 Console.WriteLine($"Server {serverAddress} - Total: {totalTimeMs:F2}ms, Network: {networkTimeMs:F2}ms, Computation: {computationTimeMs:F2}ms, Score: {response.Score}");
                 
