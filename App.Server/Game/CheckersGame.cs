@@ -180,27 +180,7 @@ private void EndGameWithDraw(string reason)
 
 }
 
-public Dictionary<string, (int activeRequests, double avgResponseTime, bool isAvailable)> GetServerStatus()
-{
-    var result = new Dictionary<string, (int activeRequests, double avgResponseTime, bool isAvailable)>();
-    
-    if (checkersAi != null && checkersAi.GetMinimaxDistributor() != null)
-    {
-        var serverStatus = checkersAi.GetMinimaxDistributor().GetServerStatus();
-        
-        foreach (var kvp in serverStatus)
-        {
-            // Convert simple bool status to tuple format
-            result[kvp.Key] = (
-                activeRequests: 0,        // No active request tracking in simplified version
-                avgResponseTime: 0.0,     // No response time tracking in simplified version  
-                isAvailable: kvp.Value
-            );
-        }
-    }
-    
-    return result;
-}
+
 
 
     public void SetServerAddresses(List<string> serverAddresses)
