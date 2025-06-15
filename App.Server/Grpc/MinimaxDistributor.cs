@@ -25,6 +25,12 @@ namespace App.Client
             _serverAddresses = serverAddresses;
             _channels = new Dictionary<string, GrpcChannel>();
             
+            // Sprawdź dostępność wysokiej rozdzielczości
+            if (!Stopwatch.IsHighResolution)
+            {
+                Console.WriteLine("Warning: High-resolution timing not available");
+            }
+            
             var channelOptions = new GrpcChannelOptions
             {
                 MaxReceiveMessageSize = 4 * 1024 * 1024, // 4MB
@@ -119,11 +125,11 @@ namespace App.Client
                 RequestTime = Timestamp.FromDateTimeOffset(DateTimeOffset.UnixEpoch)
             };
 
-            // Convert board
+            // Precyzyjny pomiar konwersji
             var conversionStopwatch = Stopwatch.StartNew();
             var compressedBoard = ConvertBoardTo32Format(board);
             conversionStopwatch.Stop();
-            long conversionTime = conversionStopwatch.ElapsedMilliseconds;
+            double conversionTimeMs = PreciseTimer.GetElapsedMilliseconds(conversionStopwatch);
             
             request.Board.Add(compressedBoard[0]);
             request.Board.Add(compressedBoard[1]);
@@ -131,28 +137,28 @@ namespace App.Client
 
             try
             {
-                // Send request asynchronously
+                // Precyzyjny pomiar czasu komunikacji sieciowej
                 var networkStopwatch = Stopwatch.StartNew();
                 var response = await client.MinimaxSearchAsync(request);
                 networkStopwatch.Stop();
-                long networkTime = networkStopwatch.ElapsedMilliseconds;
+                double networkTimeMs = PreciseTimer.GetElapsedMilliseconds(networkStopwatch);
                 
                 totalStopwatch.Stop();
-                long totalTime = totalStopwatch.ElapsedMilliseconds;
-                long computationTime = totalTime - conversionTime - networkTime;
-                if (computationTime < 0) computationTime = 0;
+                double totalTimeMs = PreciseTimer.GetElapsedMilliseconds(totalStopwatch);
+                double computationTimeMs = totalTimeMs - conversionTimeMs - networkTimeMs;
+                if (computationTimeMs < 0) computationTimeMs = 0;
                 
-                Console.WriteLine($"Server {serverAddress} - Total: {totalTime}ms, Network: {networkTime}ms, Computation: {computationTime}ms, Score: {response.Score}");
+                Console.WriteLine($"Server {serverAddress} - Total: {totalTimeMs:F2}ms, Network: {networkTimeMs:F2}ms, Computation: {computationTimeMs:F2}ms, Score: {response.Score}");
                 
                 GameLogger.LogMinimaxOperation(
                     "SendTaskToSpecificServer", 
                     serverAddress, 
                     depth, 
                     isMaximizing, 
-                    totalTime, 
-                    conversionTime, 
-                    networkTime, 
-                    computationTime, 
+                    (long)totalTimeMs, 
+                    (long)conversionTimeMs, 
+                    (long)networkTimeMs, 
+                    (long)computationTimeMs, 
                     response.Score);
                 
                 return response.Score;
@@ -162,13 +168,14 @@ namespace App.Client
                 Console.WriteLine($"Error with server {serverAddress}: {ex.Message}");
                 
                 totalStopwatch.Stop();
+                double totalTimeMs = PreciseTimer.GetElapsedMilliseconds(totalStopwatch);
                 GameLogger.LogMinimaxOperation(
                     "ServerFailure", 
                     serverAddress, 
                     depth, 
                     isMaximizing, 
-                    totalStopwatch.ElapsedMilliseconds, 
-                    conversionTime, 
+                    (long)totalTimeMs, 
+                    (long)conversionTimeMs, 
                     0, 
                     0, 
                     0);
@@ -296,6 +303,22 @@ namespace App.Client
                 channel?.Dispose();
             }
             _channels.Clear();
+        }
+    }
+
+    // Klasa pomocnicza dla precyzyjnych pomiarów czasu
+    public static class PreciseTimer
+    {
+        public static double GetElapsedMilliseconds(Stopwatch stopwatch)
+        {
+            return (double)stopwatch.ElapsedTicks / Stopwatch.Frequency * 1000;
+        }
+        
+        public static void LogTimingInfo()
+        {
+            Console.WriteLine($"Timer frequency: {Stopwatch.Frequency} Hz");
+            Console.WriteLine($"High resolution: {Stopwatch.IsHighResolution}");
+            Console.WriteLine($"Precision: {(double)1 / Stopwatch.Frequency * 1000000:F2} microseconds");
         }
     }
 }
