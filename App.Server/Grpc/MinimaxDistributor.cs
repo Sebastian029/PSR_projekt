@@ -84,6 +84,7 @@ namespace App.Client
             CheckersBoard board, int depth, bool isMaximizing, string serverAddress, int taskIndex)
         {
             var stopwatch = Stopwatch.StartNew();
+            var conversionStopwatch = Stopwatch.StartNew();
             var channel = _channels[serverAddress];
             var client = new CheckersEvaluationService.CheckersEvaluationServiceClient(channel);
             
@@ -98,13 +99,29 @@ namespace App.Client
             request.Board.Add(compressedBoard[0]);
             request.Board.Add(compressedBoard[1]);
             request.Board.Add(compressedBoard[2]);
+            conversionStopwatch.Stop();
 
             try
             {
+                var networkStopwatch = Stopwatch.StartNew();
                 var response = await client.MinimaxSearchAsync(request);
+                networkStopwatch.Stop();
                 stopwatch.Stop();
                 
                 Console.WriteLine($"Server {serverAddress} - Task {taskIndex} completed in {stopwatch.ElapsedMilliseconds}ms with score {response.Score}");
+                
+                // Log the minimax operation
+                GameLogger.LogMinimaxOperation(
+                    "DISTRIBUTED",  // operation
+                    serverAddress,  // server
+                    depth,         // depth
+                    isMaximizing,  // isMaximizing
+                    stopwatch.ElapsedMilliseconds,  // totalTimeMs
+                    conversionStopwatch.ElapsedMilliseconds,  // conversionTimeMs
+                    networkStopwatch.ElapsedMilliseconds,  // networkTimeMs
+                    response.ServerComputationTimeMs,  // computationTimeMs
+                    response.Score  // result
+                );
                 
                 return (taskIndex, response.Score);
             }
