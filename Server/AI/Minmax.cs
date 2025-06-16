@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Linq;
+using System.Threading;
 using App.Server;
 
 namespace MinimaxServer
@@ -9,11 +12,16 @@ namespace MinimaxServer
         private readonly int _maxDepth;
         private readonly IBoardEvaluator _evaluator;
         private int _nodesEvaluated = 0;
+        private readonly ParallelOptions _parallelOptions;
 
         public Minimax(int depth, IBoardEvaluator evaluator)
         {
             _maxDepth = depth;
             _evaluator = evaluator;
+            _parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Environment.ProcessorCount
+            };
         }
 
         public int MinimaxSearch(CheckersBoard board, int depth, bool isMaximizing)
@@ -30,7 +38,7 @@ namespace MinimaxServer
                 return evalScore;
             }
 
-            MoveGenerator generator = new MoveGenerator();
+            var generator = new MoveGenerator();
             var moves = generator.GetAllValidMoves(board, isMaximizing);
 
             if (depth == _maxDepth)
@@ -69,17 +77,37 @@ namespace MinimaxServer
                 return _evaluator.EvaluateBoard(board, isMaximizing);
             }
 
-            int bestEvalSeq = isMaximizing ? int.MinValue : int.MaxValue;
-            foreach (var (fromRow, fromCol, toRow, toCol) in moves)
+            // Use parallel processing for multiple moves
+            if (moves.Count >= 2) // Threshold for parallel processing
             {
-                CheckersBoard simulated = board.Clone();
-                simulated.MovePiece(fromRow, fromCol, toRow, toCol);
+                var results = new int[moves.Count];
+                var moveArray = moves.ToArray();
 
-                int eval = MinimaxSearch(simulated, depth - 1, !isMaximizing);
-                bestEvalSeq = isMaximizing ? Math.Max(bestEvalSeq, eval) : Math.Min(bestEvalSeq, eval);
+                Parallel.For(0, moves.Count, _parallelOptions, i =>
+                {
+                    var (fromRow, fromCol, toRow, toCol) = moveArray[i];
+                    var simulated = board.Clone();
+                    simulated.MovePiece(fromRow, fromCol, toRow, toCol);
+                    results[i] = MinimaxSearch(simulated, depth - 1, !isMaximizing);
+                });
+
+                return isMaximizing ? results.Max() : results.Min();
             }
+            else
+            {
+                // Sequential processing for small number of moves
+                int bestEval = isMaximizing ? int.MinValue : int.MaxValue;
+                
+                foreach (var (fromRow, fromCol, toRow, toCol) in moves)
+                {
+                    var simulated = board.Clone();
+                    simulated.MovePiece(fromRow, fromCol, toRow, toCol);
+                    int eval = MinimaxSearch(simulated, depth - 1, !isMaximizing);
+                    bestEval = isMaximizing ? Math.Max(bestEval, eval) : Math.Min(bestEval, eval);
+                }
 
-            return bestEvalSeq;
+                return bestEval;
+            }
         }
     }
 }

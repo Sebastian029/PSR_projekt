@@ -5,11 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
-using System.IO;
 using System.Diagnostics;
-using System.Text;
 using System.Linq;
-using System.Collections.Concurrent;
 
 namespace App.Client
 {
@@ -25,12 +22,6 @@ namespace App.Client
             _serverAddresses = serverAddresses;
             _channels = new Dictionary<string, GrpcChannel>();
             
-            // Sprawdź dostępność wysokiej rozdzielczości
-            if (!Stopwatch.IsHighResolution)
-            {
-                Console.WriteLine("Warning: High-resolution timing not available");
-            }
-            
             var channelOptions = new GrpcChannelOptions
             {
                 MaxReceiveMessageSize = 4 * 1024 * 1024, // 4MB
@@ -40,8 +31,7 @@ namespace App.Client
                     PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
                     KeepAlivePingDelay = TimeSpan.FromSeconds(60),
                     KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
-                    EnableMultipleHttp2Connections = true,
-                    MaxConnectionsPerServer = 10
+                    EnableMultipleHttp2Connections = true
                 }
             };
             
@@ -54,50 +44,29 @@ namespace App.Client
         public async Task<List<int>> ProcessTasksWithRoundRobin(
             List<(CheckersBoard board, int depth, bool isMaximizing)> allTasks)
         {
-            // Use array to maintain order instead of ConcurrentBag
+            if (allTasks.Count == 0)
+                return new List<int>();
+
             var results = new int[allTasks.Count];
-            var activeTasks = new Dictionary<string, (Task<int> task, int index)>();
-            var taskQueue = new Queue<(CheckersBoard, int, bool, int)>();
-            
-            // Add indices to maintain order
+            var tasks = new List<Task<(int index, int score)>>();
+
+            // Distribute tasks across servers
             for (int i = 0; i < allTasks.Count; i++)
             {
+                var serverAddress = GetNextServerAddress();
                 var task = allTasks[i];
-                taskQueue.Enqueue((task.board, task.depth, task.isMaximizing, i));
+                tasks.Add(ProcessTaskOnServer(task.board, task.depth, task.isMaximizing, serverAddress, i));
             }
+
+            // Wait for all tasks to complete
+            var completedTasks = await Task.WhenAll(tasks);
             
-            // Initially send one task to each server
-            foreach (var serverAddress in _serverAddresses)
+            // Store results in correct order
+            foreach (var (index, score) in completedTasks)
             {
-                if (taskQueue.Count > 0)
-                {
-                    var (board, depth, isMaximizing, index) = taskQueue.Dequeue();
-                    var task = SendTaskToSpecificServer(board, depth, isMaximizing, serverAddress);
-                    activeTasks[serverAddress] = (task, index);
-                }
+                results[index] = score;
             }
-            
-            // Process remaining tasks as servers become available
-            while (activeTasks.Count > 0)
-            {
-                var completedTaskPair = await Task.WhenAny(activeTasks.Values.Select(x => x.task));
-                var completedEntry = activeTasks.First(kvp => kvp.Value.task == completedTaskPair);
-                var completedServer = completedEntry.Key;
-                var resultIndex = completedEntry.Value.index;
-                
-                // Store result at correct index to maintain order
-                results[resultIndex] = await completedTaskPair;
-                activeTasks.Remove(completedServer);
-                
-                // Send next task to the now-free server
-                if (taskQueue.Count > 0)
-                {
-                    var (board, depth, isMaximizing, index) = taskQueue.Dequeue();
-                    var nextTask = SendTaskToSpecificServer(board, depth, isMaximizing, completedServer);
-                    activeTasks[completedServer] = (nextTask, index);
-                }
-            }
-            
+
             return results.ToList();
         }
 
@@ -111,9 +80,10 @@ namespace App.Client
             }
         }
 
-        private async Task<int> SendTaskToSpecificServer(CheckersBoard board, int depth, bool isMaximizing, string serverAddress)
+        private async Task<(int index, int score)> ProcessTaskOnServer(
+            CheckersBoard board, int depth, bool isMaximizing, string serverAddress, int taskIndex)
         {
-            var totalStopwatch = Stopwatch.StartNew();
+            var stopwatch = Stopwatch.StartNew();
             var channel = _channels[serverAddress];
             var client = new CheckersEvaluationService.CheckersEvaluationServiceClient(channel);
             
@@ -121,66 +91,28 @@ namespace App.Client
             {
                 Depth = depth,
                 IsMaximizing = isMaximizing,
-                // Use deterministic timestamp instead of DateTimeOffset.Now
-                RequestTime = Timestamp.FromDateTimeOffset(DateTimeOffset.UnixEpoch)
+                RequestTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now)
             };
 
-            // Precyzyjny pomiar konwersji
-            var conversionStopwatch = Stopwatch.StartNew();
             var compressedBoard = ConvertBoardTo32Format(board);
-            conversionStopwatch.Stop();
-            double conversionTimeMs = PreciseTimer.GetElapsedMilliseconds(conversionStopwatch);
-            
             request.Board.Add(compressedBoard[0]);
             request.Board.Add(compressedBoard[1]);
             request.Board.Add(compressedBoard[2]);
 
             try
             {
-                // Precyzyjny pomiar czasu komunikacji sieciowej
-                var networkStopwatch = Stopwatch.StartNew();
                 var response = await client.MinimaxSearchAsync(request);
-                networkStopwatch.Stop();
-                double networkTimeMs = PreciseTimer.GetElapsedMilliseconds(networkStopwatch);
+                stopwatch.Stop();
                 
-                totalStopwatch.Stop();
-                double totalTimeMs = PreciseTimer.GetElapsedMilliseconds(totalStopwatch);
-                double computationTimeMs = response.ServerComputationTimeMs;
-                // if (computationTimeMs < 0) computationTimeMs = 0;
+                Console.WriteLine($"Server {serverAddress} - Task {taskIndex} completed in {stopwatch.ElapsedMilliseconds}ms with score {response.Score}");
                 
-                Console.WriteLine($"Server {serverAddress} - Total: {totalTimeMs:F2}ms, Network: {networkTimeMs:F2}ms, Computation: {computationTimeMs:F2}ms, Score: {response.Score}");
-                
-                GameLogger.LogMinimaxOperation(
-                    "SendTaskToSpecificServer", 
-                    serverAddress, 
-                    depth, 
-                    isMaximizing, 
-                    (long)totalTimeMs, 
-                    (long)conversionTimeMs, 
-                    (long)networkTimeMs, 
-                    (long)computationTimeMs, 
-                    response.Score);
-                
-                return response.Score;
+                return (taskIndex, response.Score);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error with server {serverAddress}: {ex.Message}");
-                
-                totalStopwatch.Stop();
-                double totalTimeMs = PreciseTimer.GetElapsedMilliseconds(totalStopwatch);
-                GameLogger.LogMinimaxOperation(
-                    "ServerFailure", 
-                    serverAddress, 
-                    depth, 
-                    isMaximizing, 
-                    (long)totalTimeMs, 
-                    (long)conversionTimeMs, 
-                    0, 
-                    0, 
-                    0);
-                
-                throw; // Re-throw to handle at higher level
+                stopwatch.Stop();
+                Console.WriteLine($"Error with server {serverAddress} on task {taskIndex}: {ex.Message}");
+                throw;
             }
         }
 
@@ -189,7 +121,6 @@ namespace App.Client
             uint[] result = new uint[3];
             int fieldIndex = 0;
 
-            // Convert from 8x8 to 32-field format
             for (int row = 0; row < 8; row++)
             {
                 for (int col = 0; col < 8; col++)
@@ -201,7 +132,6 @@ namespace App.Client
                         PieceType piece = board.GetPiece(row, col);
                         byte pieceValue = ConvertPieceTypeToByte(piece);
                         
-                        // Use 4 bits per field (compatible with server)
                         int boardIndex = fieldIndex / 8;
                         int bitPosition = (fieldIndex % 8) * 4;
                         
@@ -216,7 +146,6 @@ namespace App.Client
                 }
             }
 
-            Console.WriteLine($"Converted {fieldIndex} fields to 32-format board");
             return result;
         }
 
@@ -238,87 +167,13 @@ namespace App.Client
             };
         }
 
-        // Validation method for determinism testing
-        public async Task<bool> ValidateDeterminism(CheckersBoard board, int depth, bool isMaximizing, int iterations = 3)
-        {
-            var results = new List<List<int>>();
-            
-            for (int i = 0; i < iterations; i++)
-            {
-                var tasks = new List<(CheckersBoard, int, bool)> { (board, depth, isMaximizing) };
-                var result = await ProcessTasksWithRoundRobin(tasks);
-                results.Add(result);
-                
-                Console.WriteLine($"Iteration {i + 1}: Score = {result[0]}");
-            }
-            
-            // Check if all results are identical
-            var firstResult = results[0];
-            bool allIdentical = results.All(r => r.SequenceEqual(firstResult));
-            
-            Console.WriteLine($"Determinism test: {(allIdentical ? "PASSED" : "FAILED")}");
-            return allIdentical;
-        }
-
-        // Batch validation for multiple board states
-        public async Task<bool> ValidateBatchDeterminism(
-            List<(CheckersBoard board, int depth, bool isMaximizing)> tasks, 
-            int iterations = 2)
-        {
-            var allResults = new List<List<int>>();
-            
-            for (int i = 0; i < iterations; i++)
-            {
-                var result = await ProcessTasksWithRoundRobin(tasks);
-                allResults.Add(result);
-                
-                Console.WriteLine($"Batch iteration {i + 1}: Results = [{string.Join(", ", result)}]");
-            }
-            
-            // Check if all batch results are identical
-            var firstBatch = allResults[0];
-            bool allBatchesIdentical = allResults.All(batch => batch.SequenceEqual(firstBatch));
-            
-            Console.WriteLine($"Batch determinism test: {(allBatchesIdentical ? "PASSED" : "FAILED")}");
-            return allBatchesIdentical;
-        }
-
-        public Dictionary<string, bool> GetServerStatus()
-        {
-            var status = new Dictionary<string, bool>();
-            foreach (var address in _serverAddresses)
-            {
-                status[address] = _channels.ContainsKey(address) && _channels[address] != null;
-            }
-            return status;
-        }
-
         public void Dispose()
         {
-            Console.WriteLine("Saving final summary...");
-            GameLogger.WriteMinimaxSummary();
-            
             foreach (var channel in _channels.Values)
             {
                 channel?.Dispose();
             }
             _channels.Clear();
-        }
-    }
-
-    // Klasa pomocnicza dla precyzyjnych pomiarów czasu
-    public static class PreciseTimer
-    {
-        public static double GetElapsedMilliseconds(Stopwatch stopwatch)
-        {
-            return (double)stopwatch.ElapsedTicks / Stopwatch.Frequency * 1000;
-        }
-        
-        public static void LogTimingInfo()
-        {
-            Console.WriteLine($"Timer frequency: {Stopwatch.Frequency} Hz");
-            Console.WriteLine($"High resolution: {Stopwatch.IsHighResolution}");
-            Console.WriteLine($"Precision: {(double)1 / Stopwatch.Frequency * 1000000:F2} microseconds");
         }
     }
 }

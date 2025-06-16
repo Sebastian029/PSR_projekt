@@ -21,36 +21,37 @@ namespace MinimaxServer.Services
 
         public override Task<MinimaxResponse> MinimaxSearch(MinimaxRequest request, ServerCallContext context)
         {
-            var currentTime = DateTimeOffset.Now;
-            var requestTime = request.RequestTime.ToDateTimeOffset();
-            TimeSpan elapsed = currentTime - requestTime;
-            Console.WriteLine($"Request time: {elapsed.TotalMilliseconds} ms");
+            var stopwatch = Stopwatch.StartNew();
+            _logger.LogInformation($"Received Minimax request with depth {request.Depth}");
 
-            Console.WriteLine($"Received depth: {request.Depth}, IsMaximizing: {request.IsMaximizing}");
+            try
+            {
+                // Konwertuj z formatu 32-polowego na szachownicę 8x8
+                var board = BoardConverter.ConvertFrom32Format(request.Board.ToArray());
+                _logger.LogInformation($"Board conversion completed in {stopwatch.ElapsedMilliseconds}ms");
 
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
+                // Create minimax instance with parallel processing
+                var minimax = new Minimax(request.Depth, _evaluator);
+                
+                // Perform parallel search
+                int score = minimax.MinimaxSearch(board, request.Depth, request.IsMaximizing);
+                
+                stopwatch.Stop();
+                _logger.LogInformation($"Calculation completed in {stopwatch.ElapsedMilliseconds}ms with score {score}");
 
-            // Konwertuj z formatu 32-polowego na szachownicę 8x8
-            var board = BoardConverter.ConvertFrom32Format(request.Board.ToArray());
-            
-            stopwatch.Stop();
-            Console.WriteLine($"Board conversion time: {stopwatch.ElapsedMilliseconds} ms");
-
-            stopwatch.Restart();
-            var minimax = new Minimax(request.Depth, _evaluator);
-            int score = minimax.MinimaxSearch(board, request.Depth, request.IsMaximizing);
-            stopwatch.Stop();
-            
-            Console.WriteLine($"Calculation time: {stopwatch.ElapsedMilliseconds} ms");
-            //Console.WriteLine($"Final score: {score}");
-
-            return Task.FromResult(new MinimaxResponse 
-            { 
-                Score = score, 
-                ResponseTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now),
-                ServerComputationTimeMs = stopwatch.ElapsedMilliseconds
-            });
+                return Task.FromResult(new MinimaxResponse 
+                { 
+                    Score = score,
+                    ResponseTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now),
+                    ServerComputationTimeMs = stopwatch.ElapsedMilliseconds
+                });
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                _logger.LogError($"Error processing Minimax request: {ex.Message}");
+                throw new RpcException(new Status(StatusCode.Internal, $"Internal error: {ex.Message}"));
+            }
         }
     }
 }
