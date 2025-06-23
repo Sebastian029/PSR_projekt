@@ -34,7 +34,7 @@ public class Minimax
         Console.WriteLine($"GAME: Processing {moves.Count} moves at depth={_maxDepth}, granulation={_granulationDepth}");
         
         var validMoves = new List<(int fromRow, int fromCol, int toRow, int toCol)>();
-        var distributedTasks = new List<(CheckersBoard, int, bool)>();
+        var initialTasks = new List<(CheckersBoard, int, bool, List<(int fromRow, int fromCol, int toRow, int toCol)>)>();
 
         // Prepare and validate moves
         foreach (var move in moves)
@@ -66,7 +66,7 @@ public class Minimax
 
                 simulated.MovePiece(move.fromRow, move.fromCol, move.toRow, move.toCol);
                 validMoves.Add(move);
-                distributedTasks.Add((simulated, _maxDepth - 1, !isWhiteTurn));
+                initialTasks.Add((simulated, _maxDepth - 1, !isWhiteTurn, new List<(int, int, int, int)>{ move }));
             }
             catch (Exception ex)
             {
@@ -74,33 +74,84 @@ public class Minimax
             }
         }
 
-        if (distributedTasks.Count == 0 || validMoves.Count == 0)
+        if (initialTasks.Count == 0 || validMoves.Count == 0)
         {
             Console.WriteLine("No valid moves found");
             return (-1, -1, -1, -1);
         }
 
-        // Process moves using parallel distribution
+        // Granulation logic: expand (granulationDepth-1) layers locally
+        var tasks = new List<(CheckersBoard, int, bool, List<(int fromRow, int fromCol, int toRow, int toCol)>)>(initialTasks);
+        for (int g = 1; g < _granulationDepth; g++)
+        {
+            var nextTasks = new List<(CheckersBoard, int, bool, List<(int, int, int, int)>)>();
+            foreach (var (b, d, maximizing, path) in tasks)
+            {
+                if (d == 0 || new MoveGenerator().IsGameOver(b))
+                {
+                    // No further expansion
+                    nextTasks.Add((b, d, maximizing, path));
+                    continue;
+                }
+                var (movesToExpand, isCapture) = GetAllValidMovesForBoard(b, maximizing);
+                if (movesToExpand.Count == 0)
+                {
+                    nextTasks.Add((b, d, maximizing, path));
+                    continue;
+                }
+                foreach (var (fromRow, fromCol, toRow, toCol) in movesToExpand)
+                {
+                    var sim = b.Clone();
+                    if (sim == null) continue;
+                    if (isCapture)
+                        new CaptureSimulator().SimulateCapture(sim, fromRow, fromCol, toRow, toCol);
+                    else
+                        sim.MovePiece(fromRow, fromCol, toRow, toCol);
+                    var newPath = new List<(int, int, int, int)>(path) { (fromRow, fromCol, toRow, toCol) };
+                    nextTasks.Add((sim, d - 1, !maximizing, newPath));
+                }
+            }
+            tasks = nextTasks;
+        }
+
+        // Now distribute all resulting tasks
+        var distributedTasks = tasks.Select(t => (t.Item1, t.Item2, t.Item3)).ToList();
+        // For mapping results back to top-level moves
+        var moveIndexMap = new List<int>();
+        for (int i = 0; i < tasks.Count; i++)
+        {
+            // The first move in the path is the top-level move
+            var topMove = tasks[i].Item4[0];
+            int idx = validMoves.FindIndex(m => m.Equals(topMove));
+            moveIndexMap.Add(idx);
+        }
+
         List<int> results = ProcessMovesWithParallelDistribution(distributedTasks, isWhiteTurn);
+
+        // Aggregate results for each top-level move
+        var moveScores = new int[validMoves.Count];
+        for (int i = 0; i < moveScores.Length; i++)
+            moveScores[i] = isWhiteTurn ? int.MinValue : int.MaxValue;
+        for (int i = 0; i < results.Count; i++)
+        {
+            int idx = moveIndexMap[i];
+            if (idx < 0 || idx >= moveScores.Length) continue;
+            if (isWhiteTurn)
+                moveScores[idx] = Math.Max(moveScores[idx], results[i]);
+            else
+                moveScores[idx] = Math.Min(moveScores[idx], results[i]);
+        }
 
         // Find best move
         int bestScore = isWhiteTurn ? int.MinValue : int.MaxValue;
         (int fromRow, int fromCol, int toRow, int toCol) bestMove = (-1, -1, -1, -1);
-        
-        for (int i = 0; i < Math.Min(results.Count, validMoves.Count); i++)
+        for (int i = 0; i < moveScores.Length; i++)
         {
-            try
+            int score = moveScores[i];
+            if ((isWhiteTurn && score > bestScore) || (!isWhiteTurn && score < bestScore))
             {
-                int score = results[i];
-                if ((isWhiteTurn && score > bestScore) || (!isWhiteTurn && score < bestScore))
-                {
-                    bestScore = score;
-                    bestMove = validMoves[i];
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error getting result for move {i}: {ex.Message}");
+                bestScore = score;
+                bestMove = validMoves[i];
             }
         }
 

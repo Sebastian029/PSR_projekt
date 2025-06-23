@@ -12,6 +12,7 @@ message MinimaxRequest {
   repeated uint32 board = 1;
   int32 depth = 2;
   bool isMaximizing = 3;
+  string task_id = 4;
 }
 
 message MinimaxResponse {

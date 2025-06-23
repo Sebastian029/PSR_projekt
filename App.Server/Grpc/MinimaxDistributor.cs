@@ -53,7 +53,8 @@ namespace App.Client
             {
                 var serverAddress = GetNextServerAddress();
                 var task = allTasks[i];
-                tasks.Add(ProcessTaskOnServer(task.board, task.depth, task.isMaximizing, serverAddress, i));
+                var taskId = Guid.NewGuid().ToString(); // Unique identifier for this task
+                tasks.Add(ProcessTaskOnServer(task.board, task.depth, task.isMaximizing, serverAddress, i, taskId));
             }
 
             // Wait for all tasks to complete
@@ -79,7 +80,7 @@ namespace App.Client
         }
 
         private async Task<(int index, int score)> ProcessTaskOnServer(
-            CheckersBoard board, int depth, bool isMaximizing, string serverAddress, int taskIndex)
+            CheckersBoard board, int depth, bool isMaximizing, string serverAddress, int taskIndex, string taskId)
         {
             var stopwatch = Stopwatch.StartNew();
             var conversionStopwatch = Stopwatch.StartNew();
@@ -90,7 +91,8 @@ namespace App.Client
             {
                 Depth = depth,
                 IsMaximizing = isMaximizing,
-                RequestTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now)
+                RequestTime = Timestamp.FromDateTimeOffset(DateTimeOffset.Now),
+                TaskId = taskId // Add the identifier to the request
             };
 
             var compressedBoard = ConvertBoardTo32Format(board);
@@ -106,7 +108,7 @@ namespace App.Client
                 networkStopwatch.Stop();
                 stopwatch.Stop();
                 
-                Console.WriteLine($"Server {serverAddress} - Task {taskIndex} completed in {stopwatch.ElapsedMilliseconds}ms with score {response.Score}");
+                Console.WriteLine($"Server {serverAddress} - Task {taskIndex} (ID: {taskId}) completed in {stopwatch.ElapsedMilliseconds}ms with score {response.Score}");
                 
                 // Log the minimax operation
                 GameLogger.LogMinimaxOperation(
@@ -126,7 +128,7 @@ namespace App.Client
             catch (Exception ex)
             {
                 stopwatch.Stop();
-                Console.WriteLine($"Error with server {serverAddress} on task {taskIndex}: {ex.Message}");
+                Console.WriteLine($"Error with server {serverAddress} on task {taskIndex} (ID: {taskId}): {ex.Message}");
                 throw;
             }
         }

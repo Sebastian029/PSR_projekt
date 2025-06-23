@@ -15,6 +15,7 @@ message MinimaxRequest {
   int32 depth = 2;
   bool isMaximizing = 3;
   google.protobuf.Timestamp request_time = 4;
+  string task_id = 5;
 }
 
 message MinimaxResponse {

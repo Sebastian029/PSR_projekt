@@ -22,13 +22,13 @@ namespace MinimaxServer.Services
         public override Task<MinimaxResponse> MinimaxSearch(MinimaxRequest request, ServerCallContext context)
         {
             var stopwatch = Stopwatch.StartNew();
-            _logger.LogInformation($"Received Minimax request with depth {request.Depth}");
+            _logger.LogInformation($"Received Minimax request with depth {request.Depth}, TaskId: {request.TaskId}");
 
             try
             {
                 // Konwertuj z formatu 32-polowego na szachownicę 8x8
                 var board = BoardConverter.ConvertFrom32Format(request.Board.ToArray());
-                _logger.LogInformation($"Board conversion completed in {stopwatch.ElapsedMilliseconds}ms");
+                _logger.LogInformation($"Board conversion completed in {stopwatch.ElapsedMilliseconds}ms, TaskId: {request.TaskId}");
 
                 // Create minimax instance with parallel processing
                 var minimax = new Minimax(request.Depth, _evaluator);
@@ -37,7 +37,7 @@ namespace MinimaxServer.Services
                 int score = minimax.MinimaxSearch(board, request.Depth, request.IsMaximizing);
                 
                 stopwatch.Stop();
-                _logger.LogInformation($"Calculation completed in {stopwatch.ElapsedMilliseconds}ms with score {score}");
+                _logger.LogInformation($"Calculation completed in {stopwatch.ElapsedMilliseconds}ms with score {score}, TaskId: {request.TaskId}");
 
                 return Task.FromResult(new MinimaxResponse 
                 { 
