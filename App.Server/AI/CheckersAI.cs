@@ -31,7 +31,7 @@ public class CheckersAI
         }
         else
         {
-            //Console.WriteLine("NO SERVER AVAILABLE");
+            Console.WriteLine("NO SERVER AVAILABLE");
         }
 
         _minimax = new Minimax(depth, granulation, _evaluator, _minimaxDistributor);

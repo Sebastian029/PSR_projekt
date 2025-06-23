@@ -24,13 +24,11 @@ namespace App.Client
             
             var channelOptions = new GrpcChannelOptions
             {
-                MaxReceiveMessageSize = 4 * 1024 * 1024, // 4MB
-                MaxSendMessageSize = 4 * 1024 * 1024,    // 4MB
                 HttpHandler = new SocketsHttpHandler
                 {
-                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
-                    KeepAlivePingDelay = TimeSpan.FromSeconds(60),
-                    KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
+                    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(60),
+                    KeepAlivePingDelay = TimeSpan.FromSeconds(600),
+                    KeepAlivePingTimeout = TimeSpan.FromSeconds(300),
                     EnableMultipleHttp2Connections = true
                 }
             };
