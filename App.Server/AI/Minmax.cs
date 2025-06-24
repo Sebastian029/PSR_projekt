@@ -172,9 +172,9 @@ public class Minimax
             if (_distributor != null && tasks.Count >= _parallelThreshold)
             {
                 Console.WriteLine($"GAME: Using distributed processing for {tasks.Count} tasks");
-                var resultTask = _distributor.ProcessTasksWithRoundRobin(tasks);
+                var resultTask = _distributor.ProcessTasksLoadBalanced(tasks);
                 resultTask.Wait();
-                return resultTask.Result;
+                return (List<int>)resultTask.Result;
             }
             else
             {
@@ -317,7 +317,7 @@ public class Minimax
                 return _evaluator.EvaluateBoard(board, isMaximizing);
 
             // Use distributor for ALL moves
-            var resultTask = _distributor.ProcessTasksWithRoundRobin(distributedTasks);
+            var resultTask = _distributor.ProcessTasksLoadBalanced(distributedTasks);
             resultTask.Wait();
             var results = resultTask.Result;
             
