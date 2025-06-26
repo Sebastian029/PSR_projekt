@@ -31,10 +31,8 @@ namespace GrpcService
                 {
 
                     var task = await client.GetTaskAsync(new TaskRequest { WorkerId = workerId });
-                    //Console.WriteLine($"Received task {task.TaskId}");
                     if (task.Request == null)
                     {
-                        //Console.WriteLine("Received null request.");
                         continue;
                     }
                     var result = CalculateBestMove(task.Request);

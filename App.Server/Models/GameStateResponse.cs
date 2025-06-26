@@ -7,5 +7,5 @@ public class GameStateResponse
     public bool IsWhiteTurn { get; set; }
     public bool GameOver { get; set; }
     public string Winner { get; set; }
-    public string CurrentPlayer { get; set; } // "human" lub "computer"
+    public string CurrentPlayer { get; set; } 
 }

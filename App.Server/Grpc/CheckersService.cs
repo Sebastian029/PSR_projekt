@@ -52,7 +52,6 @@ namespace GrpcService
             TaskRequest request,
             ServerCallContext context)
         {
-            // Przekazujemy workerId do metody TryGetNextTask
             if (_coordinator.TryGetNextTask(request.WorkerId, out var task))
             {
                 return Task.FromResult(task);

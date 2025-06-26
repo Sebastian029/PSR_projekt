@@ -11,7 +11,7 @@ namespace GrpcService
         private readonly ConcurrentQueue<CalculationTask> _pendingTasks = new();
         private readonly ConcurrentDictionary<string, TaskCompletionSource<BestValueResponse>> _pendingResults = new();
         private readonly ConcurrentDictionary<string, (string workerId, DateTime startTime)> _activeTasks = new();
-        private readonly ConcurrentDictionary<string, byte> _processedTasks = new(); // Śledzenie przetworzonych zadań
+        private readonly ConcurrentDictionary<string, byte> _processedTasks = new(); 
 
         public void RegisterWorker(string workerId, int maxDepth)
         {
@@ -43,7 +43,6 @@ namespace GrpcService
 
         public bool TryGetNextTask(string workerId, out CalculationTask task)
         {
-            // Worker może mieć tylko jedno aktywne zadanie
             if (_activeTasks.Values.Any(x => x.workerId == workerId))
             {
                 task = null;
@@ -52,7 +51,6 @@ namespace GrpcService
 
             while (_pendingTasks.TryDequeue(out task))
             {
-                // Sprawdź czy zadanie nie było już przetwarzane
                 if (_processedTasks.TryAdd(task.TaskId, 0))
                 {
                     if (_activeTasks.TryAdd(task.TaskId, (workerId, DateTime.UtcNow)))
@@ -132,7 +130,6 @@ namespace GrpcService
             }
         }
 
-        // Dodatkowa metoda do czyszczenia zawieszonych zadań
         public void CleanupStaleTasks(TimeSpan timeout)
         {
             var now = DateTime.UtcNow;

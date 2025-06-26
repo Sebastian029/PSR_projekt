@@ -1,5 +1,4 @@
-﻿// Utilities/GameLogger.cs
-using System.Globalization;
+﻿using System.Globalization;
 using System.IO;
 
 public static class GameLogger

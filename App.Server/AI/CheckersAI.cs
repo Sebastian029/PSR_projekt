@@ -18,7 +18,6 @@ public class CheckersAI
         _captureSimulator = new CaptureSimulator();
     }
 
-    // Rest of the class remains the same
     public (int fromField, int toField) CalculateOptimalMove(CheckersBoard board, bool isWhiteTurn)
     {
         var captures = _moveGenerator.GetMandatoryCaptures(board, isWhiteTurn);
