@@ -11,6 +11,7 @@ public static class PerformanceLogger
 
     static PerformanceLogger()
     {
+        // Zapewnij, że plik istnieje
         lock (LockObject)
         {
             if (!File.Exists(LogFilePath))
@@ -24,6 +25,7 @@ public static class PerformanceLogger
     {
         var header = new StringBuilder();
 
+        // Nagłówek wyjaśniający
         header.AppendLine("# Performance metrics log");
         header.AppendLine("# Columns description:");
         header.AppendLine("# 1. Timestamp - date and time of measurement (UTC)");

@@ -16,20 +16,23 @@ public class EvaluatorClient : IBoardEvaluatorClient
             bool isKing = PieceUtils.IsKing(piece);
             int value = isKing ? 5 : 2;
 
-            int row = i / 4; 
-            int col = (i % 4) * 2 + ((row % 2 == 0) ? 1 : 0); 
+            int row = i / 4; // Each row has 4 playable fields
+            int col = (i % 4) * 2 + ((row % 2 == 0) ? 1 : 0); // Calculate column (0–7)
 
             int positionalBonus = 0;
 
             if (!isKing)
             {
+                // Advancement: more advanced pieces are better
                 int advancement = isWhite ? (7 - row) : row;
                 positionalBonus += advancement;
 
+                // Back row defense
                 if ((isWhite && row == 7) || (!isWhite && row == 0))
                     positionalBonus += 2;
             }
 
+            // Edge safety bonus
             if (col == 0 || col == 7)
                 positionalBonus += 1;
 
