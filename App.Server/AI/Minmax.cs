@@ -36,12 +36,10 @@ public class Minimax
         var validMoves = new List<(int fromRow, int fromCol, int toRow, int toCol)>();
         var distributedTasks = new List<(CheckersBoard, int, bool)>();
 
-        // Prepare and validate moves
         foreach (var move in moves)
         {
             try
             {
-                // Validate coordinates
                 if (move.fromRow < 0 || move.fromRow >= 8 || move.fromCol < 0 || move.fromCol >= 8 ||
                     move.toRow < 0 || move.toRow >= 8 || move.toCol < 0 || move.toCol >= 8)
                 {
@@ -56,7 +54,6 @@ public class Minimax
                     continue;
                 }
 
-                // Test if move is possible
                 var piece = simulated.GetPiece(move.fromRow, move.fromCol);
                 if (piece == PieceType.Empty)
                 {
@@ -80,10 +77,8 @@ public class Minimax
             return (-1, -1, -1, -1);
         }
 
-        // Process moves using parallel distribution
         List<int> results = ProcessMovesWithParallelDistribution(distributedTasks, isWhiteTurn);
 
-        // Find best move
         int bestScore = isWhiteTurn ? int.MinValue : int.MaxValue;
         (int fromRow, int fromCol, int toRow, int toCol) bestMove = (-1, -1, -1, -1);
         
@@ -163,10 +158,8 @@ public class Minimax
                 }
             });
 
-            // Convert concurrent bag to ordered list
             var orderedResults = results.OrderBy(r => r.index).Select(r => r.score).ToList();
             
-            // Fill any missing results
             while (orderedResults.Count < tasks.Count)
             {
                 orderedResults.Add(isWhiteTurn ? int.MinValue : int.MaxValue);
@@ -177,7 +170,6 @@ public class Minimax
         catch (Exception ex)
         {
             Console.WriteLine($"Error in parallel processing: {ex.Message}");
-            // Fallback to sequential processing
             return ProcessMovesSequentially(tasks, isWhiteTurn);
         }
     }
@@ -212,13 +204,11 @@ public class Minimax
 
             int currentLayer = _maxDepth - depth;
 
-            // Use distributed processing at specified granulation level
             if (_distributor != null && currentLayer >= granulationDepth)
             {
                 return ProcessLayerWithDistribution(board, depth, isMaximizing, granulationDepth);
             }
 
-            // Use parallel local processing for deeper levels
             return ProcessLayerWithParallelLocal(board, depth, isMaximizing, granulationDepth);
         }
         catch (Exception ex)
@@ -239,7 +229,6 @@ public class Minimax
             if (allMoves.Count == 0)
                 return _evaluator.EvaluateBoard(board, isMaximizing);
 
-            // Create distributed tasks for ALL moves at this level
             var distributedTasks = new List<(CheckersBoard, int, bool)>();
             
             foreach (var (fromRow, fromCol, toRow, toCol) in allMoves)
@@ -265,7 +254,6 @@ public class Minimax
             if (distributedTasks.Count == 0)
                 return _evaluator.EvaluateBoard(board, isMaximizing);
 
-            // Use distributor for ALL moves
             var resultTask = _distributor.ProcessTasksWithRoundRobin(distributedTasks);
             resultTask.Wait();
             var results = resultTask.Result;
@@ -288,7 +276,6 @@ public class Minimax
             if (allMoves.Count == 0)
                 return _evaluator.EvaluateBoard(board, isMaximizing);
 
-            // Use parallel processing for multiple moves
             if (allMoves.Count >= _parallelThreshold)
             {
                 var results = new ConcurrentBag<int>();
@@ -325,7 +312,6 @@ public class Minimax
             }
             else
             {
-                // Sequential processing for small number of moves
                 int bestEval = isMaximizing ? int.MinValue : int.MaxValue;
                 
                 foreach (var (fromRow, fromCol, toRow, toCol) in allMoves)

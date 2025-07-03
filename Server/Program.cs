@@ -29,7 +29,6 @@ public class Program
             });
         });
 
-        // Register services
         builder.Services.AddGrpc();
         builder.Services.AddSingleton<MinimaxServer.IBoardEvaluator, MinimaxServer.Evaluator>();
 

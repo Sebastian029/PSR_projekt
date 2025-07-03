@@ -1,5 +1,4 @@
-﻿// CheckersGame.cs
-using Grpc.Net.Client;
+﻿using Grpc.Net.Client;
 using System.Collections.Generic;
 
 namespace App.Server;
@@ -22,12 +21,10 @@ public partial class CheckersGame
     private const int MAX_POSITION_REPEATS = 3;
     private const int MAX_MOVES_WITHOUT_CAPTURE = 50;
     private int movesWithoutCapture = 0;
-    // NOWE POLA dla stanu gry
     private bool gameOver = false;
     private string winner = null;
     private string drawReason = null;
 
-    // NOWE WŁAŚCIWOŚCI
     public bool IsGameOver => gameOver;
     public string Winner => winner;
     public string DrawReason => drawReason;
@@ -48,14 +45,12 @@ public partial class CheckersGame
     //     Console.WriteLine($"Using server address for distributed calculation: {_serverAddresses[0]}");
     //     checkersAi = new CheckersAI(depth: 5, granulation: 1, isPerformanceTest: false, serverAddresses: _serverAddresses);
     // }
-    // CheckersGame.cs - konstruktor
     public CheckersGame()
     {
         board = new CheckersBoard();
         isWhiteTurn = true;
         _serverAddresses = new List<string>();
     
-        // Wyłącz serwery dla testów lokalnych
         _serverAddresses.Add("http://192.168.17.19:5001");
         _serverAddresses.Add("http://localhost:5001");
     
@@ -73,7 +68,6 @@ public partial class CheckersGame
         Console.WriteLine($"Game settings: Depth={depth}, Granulation={granulation}, PerfTest={isPerformanceTest}, PlayerMode={isPlayerMode}");
         checkersAi.updateSettings(depth, granulation);
     }
-    // CheckersGame.cs - dodaj tę metodę jeśli jej nie ma
     public void SwitchTurn()
     {
         isWhiteTurn = !isWhiteTurn;
@@ -102,21 +96,18 @@ public bool CheckGameOver()
 {
     if (gameOver) return true;
 
-    // Sprawdź remis przez 50 ruchów
     if (movesWithoutCapture >= MAX_MOVES_WITHOUT_CAPTURE)
     {
         EndGameWithDraw("50 moves without capture");
         return true;
     }
 
-    // Sprawdź remis przez powtórzenie pozycji
     if (IsDrawByRepetition())
     {
         EndGameWithDraw("Position repeated too many times");
         return true;
     }
 
-    // Sprawdź czy któryś gracz nie ma figur
     bool hasWhitePieces = false;
     bool hasBlackPieces = false;
     
@@ -147,7 +138,6 @@ public bool CheckGameOver()
         return true;
     }
 
-    // Sprawdź pat (brak możliwych ruchów)
     var validMoves = GetValidMovesFiltered();
     if (validMoves.Count == 0)
     {
@@ -179,10 +169,6 @@ private void EndGameWithDraw(string reason)
     GameLogger.WriteMinimaxSummary();
 
 }
-
-
-
-
     public void SetServerAddresses(List<string> serverAddresses)
     {
         _serverAddresses = serverAddresses ?? new List<string>();

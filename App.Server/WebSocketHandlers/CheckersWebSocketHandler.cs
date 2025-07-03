@@ -144,7 +144,6 @@ namespace App.Server.WebSocketHandlers
 
                 Console.WriteLine($"Received move: FromRow={move.FromRow}, FromCol={move.FromCol}, ToRow={move.ToRow}, ToCol={move.ToCol}");
 
-                // Walidacja współrzędnych
                 if (move.FromRow < 0 || move.FromRow >= 8 || move.FromCol < 0 || move.FromCol >= 8 ||
                     move.ToRow < 0 || move.ToRow >= 8 || move.ToCol < 0 || move.ToCol >= 8)
                 {
@@ -158,7 +157,6 @@ namespace App.Server.WebSocketHandlers
                     return;
                 }
 
-                // Wykonaj ruch
                 bool success = _game.PlayMove(move.FromRow, move.FromCol, move.ToRow, move.ToCol);
                 if (!success)
                 {
@@ -182,11 +180,8 @@ namespace App.Server.WebSocketHandlers
             }
         }
 
-// CheckersWebSocketHandler.cs - poprawiona metoda ProcessComputerTurn
-// CheckersWebSocketHandler.cs - poprawiona metoda ProcessComputerTurn
 private async Task ProcessComputerTurn(WebSocket webSocket)
 {
-    // NOWE: Sprawdź czy gra się już skończyła
     if (_game.IsGameOver)
     {
         Console.WriteLine($"Game is already over. Winner: {_game.Winner}");
@@ -194,7 +189,6 @@ private async Task ProcessComputerTurn(WebSocket webSocket)
         return;
     }
 
-    // NOWE: Sprawdź warunki remisu przed rozpoczęciem tury
     if (_game.IsDrawGame)
     {
         Console.WriteLine($"Game ended in draw: {_game.DrawReason}");
@@ -202,7 +196,7 @@ private async Task ProcessComputerTurn(WebSocket webSocket)
         return;
     }
 
-    int maxAttempts = 5; // Zmniejsz liczbę prób
+    int maxAttempts = 5; 
     int attempts = 0;
     HashSet<(int, int, int, int)> blockedMoves = new HashSet<(int, int, int, int)>();
 
@@ -253,9 +247,6 @@ private async Task ProcessComputerTurn(WebSocket webSocket)
 
     await SendGameState(webSocket, true);
 }
-
-
-
 
         private async Task StartComputerVsComputerGame(WebSocket webSocket)
         {
@@ -328,7 +319,6 @@ private async Task ProcessComputerTurn(WebSocket webSocket)
         }
     }
 
-    // Klasy pomocnicze dla deserializacji JSON
     public class GameSettings
     {
         [JsonPropertyName("type")]
@@ -354,7 +344,6 @@ private async Task ProcessComputerTurn(WebSocket webSocket)
         public int ToRow { get; set; }
         public int ToCol { get; set; }
         
-        // Dla kompatybilności wstecznej z oryginalnym formatem
         public int From { get; set; }
         public int To { get; set; }
     }

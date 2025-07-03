@@ -33,7 +33,6 @@ namespace MinimaxServer
                 int evalScore = _evaluator.EvaluateBoard(board, isMaximizing);
                 if (depth == _maxDepth)
                 {
-                    //Console.WriteLine($"Leaf node reached - depth: {depth}, score: {evalScore}, nodes evaluated: {_nodesEvaluated}");
                 }
                 return evalScore;
             }
@@ -43,7 +42,6 @@ namespace MinimaxServer
 
             if (depth == _maxDepth)
             {
-                // Parallelize top-level move evaluation
                 if (moves.Count == 0)
                 {
                     return _evaluator.EvaluateBoard(board, isMaximizing);
@@ -68,7 +66,6 @@ namespace MinimaxServer
                     }
                 });
 
-                //Console.WriteLine($"Search completed - Total nodes evaluated: {_nodesEvaluated}, Best score: {bestEval}");
                 return bestEval;
             }
 
@@ -77,8 +74,7 @@ namespace MinimaxServer
                 return _evaluator.EvaluateBoard(board, isMaximizing);
             }
 
-            // Use parallel processing for multiple moves
-            if (moves.Count >= 2) // Threshold for parallel processing
+            if (moves.Count >= 2) 
             {
                 var results = new int[moves.Count];
                 var moveArray = moves.ToArray();
@@ -95,7 +91,6 @@ namespace MinimaxServer
             }
             else
             {
-                // Sequential processing for small number of moves
                 int bestEval = isMaximizing ? int.MinValue : int.MaxValue;
                 
                 foreach (var (fromRow, fromCol, toRow, toCol) in moves)

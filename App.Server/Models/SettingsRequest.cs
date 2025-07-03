@@ -14,7 +14,6 @@ public class SettingsRequest
     [JsonPropertyName("isPerformanceTest")]
     public bool IsPerformanceTest { get; set; }
 
-    // Add GameMode setting
     [JsonPropertyName("isPlayerMode")]
     public bool IsPlayerMode { get; set; }
 }

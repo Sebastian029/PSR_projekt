@@ -11,7 +11,7 @@ namespace MinimaxServer.Services
     public class CheckersEvaluationServiceImpl : CheckersEvaluationService.CheckersEvaluationServiceBase
     {
         private readonly ILogger<CheckersEvaluationServiceImpl> _logger;
-        private readonly MinimaxServer.IBoardEvaluator _evaluator; // Pełna nazwa namespace
+        private readonly MinimaxServer.IBoardEvaluator _evaluator; 
 
         public CheckersEvaluationServiceImpl(ILogger<CheckersEvaluationServiceImpl> logger, MinimaxServer.IBoardEvaluator evaluator)
         {
@@ -26,14 +26,11 @@ namespace MinimaxServer.Services
 
             try
             {
-                // Konwertuj z formatu 32-polowego na szachownicę 8x8
                 var board = BoardConverter.ConvertFrom32Format(request.Board.ToArray());
                 _logger.LogInformation($"Board conversion completed in {stopwatch.ElapsedMilliseconds}ms");
 
-                // Create minimax instance with parallel processing
                 var minimax = new Minimax(request.Depth, _evaluator);
                 
-                // Perform parallel search
                 int score = minimax.MinimaxSearch(board, request.Depth, request.IsMaximizing);
                 
                 stopwatch.Stop();

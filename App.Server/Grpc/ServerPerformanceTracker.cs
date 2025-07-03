@@ -17,8 +17,8 @@ namespace App.Client
 
         private readonly Dictionary<string, ServerMetrics> _serverMetrics;
         private readonly object _lockObject = new object();
-        private const int MAX_ACTIVE_REQUESTS = 2; // Maximum concurrent requests per server
-        private const double RESPONSE_TIME_THRESHOLD = 60000; // 5 seconds threshold for response time
+        private const int MAX_ACTIVE_REQUESTS = 2;
+        private const double RESPONSE_TIME_THRESHOLD = 60000; 
 
         public ServerPerformanceTracker()
         {
@@ -47,7 +47,6 @@ namespace App.Client
                     metrics.LastRequestTime = DateTime.Now;
                     metrics.ActiveRequests--;
                     
-                    // Mark server as unavailable if response time is too high
                     if (metrics.AverageResponseTime > RESPONSE_TIME_THRESHOLD)
                     {
                         metrics.IsAvailable = false;
@@ -79,7 +78,6 @@ namespace App.Client
 
                 if (!availableServers.Any())
                 {
-                    // If no servers are available, try to find one that's not overloaded
                     var notOverloadedServers = _serverMetrics
                         .Where(s => s.Value.ActiveRequests < MAX_ACTIVE_REQUESTS)
                         .OrderBy(s => s.Value.ActiveRequests)
@@ -91,7 +89,6 @@ namespace App.Client
                         return notOverloadedServers.First().Key;
                     }
 
-                    // If all servers are overloaded, return the one with least load
                     return _serverMetrics
                         .OrderBy(s => s.Value.ActiveRequests)
                         .ThenBy(s => s.Value.AverageResponseTime)

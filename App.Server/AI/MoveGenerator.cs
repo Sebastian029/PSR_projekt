@@ -1,5 +1,4 @@
-﻿// MoveGenerator.cs
-using App.Server;
+﻿using App.Server;
 using System.Collections.Generic;
 using System.Linq;
 

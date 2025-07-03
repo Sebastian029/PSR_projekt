@@ -23,7 +23,6 @@ namespace App.Server
 
         private void InitializeBoard()
         {
-            // Wyczyść całą szachownicę
             for (int row = 0; row < BOARD_SIZE; row++)
             {
                 for (int col = 0; col < BOARD_SIZE; col++)
@@ -32,7 +31,6 @@ namespace App.Server
                 }
             }
 
-            // Ustaw czarne pionki na pierwszych 3 rzędach (tylko ciemne pola)
             for (int row = 0; row < 3; row++)
             {
                 for (int col = 0; col < BOARD_SIZE; col++)
@@ -44,7 +42,6 @@ namespace App.Server
                 }
             }
 
-            // Ustaw białe pionki na ostatnich 3 rzędach (tylko ciemne pola)
             for (int row = 5; row < BOARD_SIZE; row++)
             {
                 for (int col = 0; col < BOARD_SIZE; col++)
@@ -62,14 +59,12 @@ namespace App.Server
             InitializeBoard();
         }
 
-        // CheckersBoard.cs
         public CheckersBoard Clone()
         {
             try
             {
                 CheckersBoard clonedBoard = new CheckersBoard();
         
-                // Skopiuj stan tablicy
                 for (int row = 0; row < 8; row++)
                 {
                     for (int col = 0; col < 8; col++)
@@ -82,7 +77,6 @@ namespace App.Server
             }
             catch (Exception ex)
             {
-               // Console.WriteLine($"Error in Clone(): {ex.Message}");
                 return null;
             }
         }
@@ -131,12 +125,10 @@ namespace App.Server
         
         
 
-        // CheckersBoard.cs
         public PieceType GetPiece(int row, int col)
         {
             if (row < 0 || row >= 8 || col < 0 || col >= 8)
             {
-               // Console.WriteLine($"GetPiece: Invalid coordinates ({row}, {col})");
                 return PieceType.Empty;
             }
     
@@ -147,7 +139,6 @@ namespace App.Server
         {
             if (row < 0 || row >= 8 || col < 0 || col >= 8)
             {
-               // Console.WriteLine($"SetPiece: Invalid coordinates ({row}, {col})");
                 return;
             }
     
@@ -176,14 +167,12 @@ namespace App.Server
                 return piece == PieceType.BlackPawn || piece == PieceType.BlackKing;
         }
 
-        // Konwertuje pozycję na notację algebraiczną
         public string GetSquareNotation(int row, int col)
         {
             if (!IsValidPosition(row, col)) return "";
             return $"{(char)('a' + col)}{8 - row}";
         }
 
-        // Wyświetla szachownicę w konsoli (do debugowania)
         public void PrintBoard()
         {
             Console.WriteLine("  a b c d e f g h");

@@ -49,7 +49,6 @@ namespace MinimaxServer
                 }
             }
 
-            //Console.WriteLine($"Board evaluation: White={whitePieces}, Black={blackPieces}, Score={score}, ForWhite={forWhite}");
             return forWhite ? score : -score;
         }
     }

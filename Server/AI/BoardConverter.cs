@@ -11,13 +11,11 @@ namespace MinimaxServer
             
             if (compressedBoard.Length < 3)
             {
-               // Console.WriteLine("Invalid compressed board - not enough data");
                 return board;
             }
 
             int fieldIndex = 0;
 
-            // Konwertuj z formatu 32-polowego na szachownicę 8x8
             for (int row = 0; row < 8; row++)
             {
                 for (int col = 0; col < 8; col++)
@@ -41,7 +39,6 @@ namespace MinimaxServer
         {
             if (index < 0 || index >= 32) return PieceType.Empty;
 
-            // 8 pól na uint (4 bity każde)
             int arrayIndex = index / 8;
             int bitPosition = (index % 8) * 4;
 

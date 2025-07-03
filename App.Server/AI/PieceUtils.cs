@@ -1,5 +1,4 @@
-﻿// PieceUtils.cs
-using App.Server;
+﻿using App.Server;
 
 public static class PieceUtils
 {
@@ -19,7 +18,6 @@ public static class PieceUtils
         return (row, col);
     }
 
-    // Przeciążenia dla kompatybilności z byte
     public static bool IsWhite(byte piece) =>
         IsWhite((PieceType)piece);
 

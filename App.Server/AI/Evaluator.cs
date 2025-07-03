@@ -1,5 +1,4 @@
-﻿// Evaluator.cs
-using App.Server;
+﻿using App.Server;
 
 public class Evaluator : IBoardEvaluator
 {
@@ -24,16 +23,13 @@ public class Evaluator : IBoardEvaluator
 
                 if (!isKing)
                 {
-                    // Advancement: bardziej zaawansowane figury są lepsze
                     int advancement = isWhite ? (7 - row) : row;
                     positionalBonus += advancement;
 
-                    // Obrona tylnego rzędu
                     if ((isWhite && row == 7) || (!isWhite && row == 0))
                         positionalBonus += 2;
                 }
 
-                // Bonus za bezpieczeństwo na krawędzi
                 if (col == 0 || col == 7)
                     positionalBonus += 1;
 

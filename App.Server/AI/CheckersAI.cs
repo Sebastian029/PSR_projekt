@@ -1,5 +1,4 @@
-﻿// CheckersAI.cs
-using App.Client;
+﻿using App.Client;
 using App.Server;
 using Grpc.Core;
 using System;
@@ -65,7 +64,6 @@ public class CheckersAI
         }
     }
 
-    // NOWA METODA: Oblicz optymalny ruch z wykluczeniem określonych ruchów
     public (int fromRow, int fromCol, int toRow, int toCol) CalculateOptimalMoveWithExclusions(
         CheckersBoard board, bool isWhiteTurn, HashSet<(int, int, int, int)> excludedMoves)
     {
@@ -74,7 +72,6 @@ public class CheckersAI
             var captures = _moveGenerator.GetMandatoryCaptures(board, isWhiteTurn);
             if (captures.Count > 0)
             {
-                // Filtruj wykluczone ruchy z bić
                 var filteredCaptures = new Dictionary<(int row, int col), List<(int row, int col)>>();
                 foreach (var kvp in captures)
                 {
@@ -95,7 +92,6 @@ public class CheckersAI
                 }
             }
 
-            // Filtruj wykluczone ruchy ze zwykłych ruchów
             var validMoves = _moveGenerator.GetAllValidMoves(board, isWhiteTurn)
                 .Where(move => !excludedMoves.Contains(move))
                 .ToList();

@@ -24,8 +24,8 @@ namespace App.Client
             
             var channelOptions = new GrpcChannelOptions
             {
-                MaxReceiveMessageSize = 4 * 1024 * 1024, // 4MB
-                MaxSendMessageSize = 4 * 1024 * 1024,    // 4MB
+                MaxReceiveMessageSize = 4 * 1024 * 1024,
+                MaxSendMessageSize = 4 * 1024 * 1024,   
                 HttpHandler = new SocketsHttpHandler
                 {
                     PooledConnectionIdleTimeout = TimeSpan.FromMinutes(5),
@@ -50,7 +50,6 @@ namespace App.Client
             var results = new int[allTasks.Count];
             var tasks = new List<Task<(int index, int score)>>();
 
-            // Distribute tasks across servers
             for (int i = 0; i < allTasks.Count; i++)
             {
                 var serverAddress = GetNextServerAddress();
@@ -58,10 +57,8 @@ namespace App.Client
                 tasks.Add(ProcessTaskOnServer(task.board, task.depth, task.isMaximizing, serverAddress, i));
             }
 
-            // Wait for all tasks to complete
             var completedTasks = await Task.WhenAll(tasks);
             
-            // Store results in correct order
             foreach (var (index, score) in completedTasks)
             {
                 results[index] = score;
@@ -110,17 +107,16 @@ namespace App.Client
                 
                 Console.WriteLine($"Server {serverAddress} - Task {taskIndex} completed in {stopwatch.ElapsedMilliseconds}ms with score {response.Score}");
                 
-                // Log the minimax operation
                 GameLogger.LogMinimaxOperation(
-                    "DISTRIBUTED",  // operation
-                    serverAddress,  // server
-                    depth,         // depth
-                    isMaximizing,  // isMaximizing
-                    stopwatch.ElapsedMilliseconds,  // totalTimeMs
-                    conversionStopwatch.ElapsedMilliseconds,  // conversionTimeMs
-                    networkStopwatch.ElapsedMilliseconds,  // networkTimeMs
-                    response.ServerComputationTimeMs,  // computationTimeMs
-                    response.Score  // result
+                    "DISTRIBUTED",  
+                    serverAddress,  
+                    depth,        
+                    isMaximizing,  
+                    stopwatch.ElapsedMilliseconds,  
+                    conversionStopwatch.ElapsedMilliseconds,  
+                    networkStopwatch.ElapsedMilliseconds,  
+                    response.ServerComputationTimeMs,  
+                    response.Score  
                 );
                 
                 return (taskIndex, response.Score);

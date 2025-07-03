@@ -13,7 +13,6 @@ public static class GameLogger
     private static readonly string MinimaxSummaryCsvPath = "minimax_summary.csv";
     private static readonly object LogLock = new object();
     
-    // Statystyki minimaksa
     private static long _totalComputationTime = 0;
     private static long _totalCommunicationTime = 0;
     private static int _totalRequests = 0;
@@ -24,26 +23,22 @@ public static class GameLogger
 
     static GameLogger()
     {
-        // Inicjalizacja pliku logów gry
         if (!File.Exists(GameLogFilePath))
         {
             File.WriteAllText(GameLogFilePath, "Depth;Granulation;TotalGameTimeSec\n");
         }
         
-        // Inicjalizacja pliku logów wydajności minimaksa
         if (!File.Exists(MinimaxPerformanceLogPath))
         {
             File.WriteAllText(MinimaxPerformanceLogPath, 
                 "Timestamp;Operation;Server;Depth;IsMaximizing;TotalTimeMs;ConversionTimeMs;NetworkTimeMs;ComputationTimeMs;Result\n");
         }
         
-        // Sprawdź czy plik podsumowania istnieje, jeśli nie - utwórz go
         if (!File.Exists(MinimaxSummaryLogPath))
         {
             File.WriteAllText(MinimaxSummaryLogPath, "");
         }
         
-        // Inicjalizacja nowego pliku CSV dla podsumowań
         if (!File.Exists(MinimaxSummaryCsvPath))
         {
             File.WriteAllText(MinimaxSummaryCsvPath, 
@@ -51,18 +46,15 @@ public static class GameLogger
         }
     }
 
-    // GŁÓWNA POPRAWKA: Usunięto błędne dzielenie przez 1000
     public static void LogGame(int depth, int granulation, double gameTimeSeconds)
     {
         lock (LogLock)
         {
-            // Zapisujemy granulację na potrzeby podsumowania
             _currentGranulation = granulation;
             
-            // POPRAWKA: gameTimeSeconds już jest w sekundach, nie dzielimy przez 1000
             var line = string.Format(CultureInfo.InvariantCulture,
                 "{0};{1};{2:F2}\n",
-                depth, granulation, gameTimeSeconds); // USUNIĘTO: / 1000
+                depth, granulation, gameTimeSeconds); 
 
             File.AppendAllText(GameLogFilePath, line);
         }
@@ -83,13 +75,11 @@ public static class GameLogger
         {
             lock (LogLock)
             {
-                // Dodajemy serwer do listy aktywnych serwerów (jeśli to nie jest "ALL" lub "NONE")
                 if (server != "ALL" && server != "NONE" && !string.IsNullOrEmpty(server))
                 {
                     _activeServers.Add(server);
                 }
                 
-                // Aktualizacja statystyk
                 _totalRequests++;
                 _totalCommunicationTime += networkTimeMs;
                 _totalComputationTime += computationTimeMs;
@@ -104,7 +94,6 @@ public static class GameLogger
                     _depthStatistics[depth] = (existingTotal + totalTimeMs, existingCount + 1);
                 }
                 
-                // Zapisz do pliku logów
                 string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
                 string logEntry = $"{timestamp};{operation};{server};{depth};{isMaximizing};" +
                     $"{totalTimeMs};{conversionTimeMs};{networkTimeMs};{computationTimeMs};{result}\n";
@@ -123,19 +112,16 @@ public static class GameLogger
         {
             lock (LogLock)
             {
-                // Jeśli nie ma żadnych zapytań, nie zapisuj podsumowania
                 if (_totalRequests == 0)
                 {
                     return;
                 }
                 
-                // Zapisz do pliku tekstowego (zachowujemy obecny format)
                 WriteMinimaxSummaryToText();
                 
-                // Zapisz do pliku CSV (nowy format)
                 WriteMinimaxSummaryToCsv();
                 
-                ResetStatistics(); // Resetujemy statystyki po zapisie
+                ResetStatistics(); 
                 
                 Console.WriteLine("Minimax summary zapisane");
             }
@@ -155,7 +141,6 @@ public static class GameLogger
         sb.AppendLine($"Granulation: {_currentGranulation}");
         sb.AppendLine($"Active servers: {_activeServers.Count}");
         
-        // Dodajemy listę adresów serwerów
         if (_activeServers.Count > 0)
         {
             sb.AppendLine("Server addresses:");
@@ -180,7 +165,6 @@ public static class GameLogger
         
         sb.AppendLine("\n=== End of Summary ===\n");
         
-        // Dopisujemy na końcu pliku
         File.AppendAllText(MinimaxSummaryLogPath, sb.ToString());
     }
     
@@ -190,25 +174,23 @@ public static class GameLogger
         double avgCommunicationTime = _totalRequests > 0 ? (double)_totalCommunicationTime / _totalRequests : 0;
         double avgComputationTime = _totalRequests > 0 ? (double)_totalComputationTime / _totalRequests : 0;
         
-        // Pobierz głębokość (zakładając, że jest tylko jedna głębokość w statystykach)
         int depth = _depthStatistics.Keys.FirstOrDefault();
         
         var csvLine = string.Format(CultureInfo.InvariantCulture,
             "{0};{1};{2};{3:F2};{4};{5:F2};{6:F2};{7};{8}\n",
-            depth,                      // głębokość
-            _currentGranulation,        // granulacja
-            _activeServers.Count,       // aktywne serwery
-            sessionDuration,            // czas trwania
-            _totalRequests,             // całkowita liczba zapytań
-            avgCommunicationTime,       // średni czas komunikacji
-            avgComputationTime,         // średni czas obliczeń
-            _totalCommunicationTime,    // całkowity czas komunikacji
-            _totalComputationTime);     // całkowity czas obliczeń
+            depth,                      
+            _currentGranulation,       
+            _activeServers.Count,      
+            sessionDuration,            
+            _totalRequests,             
+            avgCommunicationTime,       
+            avgComputationTime,         
+            _totalCommunicationTime,   
+            _totalComputationTime);    
         
         File.AppendAllText(MinimaxSummaryCsvPath, csvLine);
     }
 
-    // Dodane metody pomocnicze
     public static void ResetStatistics()
     {
         lock (LogLock)

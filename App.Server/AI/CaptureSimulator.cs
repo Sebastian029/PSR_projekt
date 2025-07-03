@@ -1,5 +1,4 @@
-﻿// CaptureSimulator.cs
-using App.Server;
+﻿using App.Server;
 using System.Linq;
 
 public class CaptureSimulator
@@ -16,7 +15,6 @@ public class CaptureSimulator
         board.SetPiece(capture.capturedRow, capture.capturedCol, PieceType.Empty);
         board.SetPiece(toRow, toCol, piece);
 
-        // Sprawdź promocję do damki
         if (piece == PieceType.WhitePawn && toRow == 0)
         {
             board.SetPiece(toRow, toCol, PieceType.WhiteKing);
@@ -27,7 +25,6 @@ public class CaptureSimulator
         }
     }
 
-    // Przeciążenie dla kompatybilności z oryginalnym interfejsem
     public void SimulateCapture(CheckersBoard board, int from, int to)
     {
         var (fromRow, fromCol) = ConvertFromIndex32(from);
