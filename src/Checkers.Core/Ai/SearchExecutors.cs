@@ -1,15 +1,10 @@
 namespace Checkers.Core.Ai;
 
-/// <summary>
-/// Runs independent search jobs and returns one result per job, in the same order.
-/// Implementations may compute locally or ship the jobs to remote workers.
-/// </summary>
 public interface ISearchExecutor
 {
     Task<SearchResult[]> ExecuteAsync(IReadOnlyList<SearchJob> jobs, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Evaluates jobs in parallel on the local machine.</summary>
 public sealed class LocalSearchExecutor : ISearchExecutor
 {
     private readonly int _maxParallelism;

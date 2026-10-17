@@ -1,9 +1,5 @@
 namespace Checkers.Core.Model;
 
-/// <summary>
-/// A complete move for one turn: a single step, or a whole capture sequence.
-/// <see cref="Path"/> lists every landing square in order and <see cref="Captured"/> every removed piece.
-/// </summary>
 public sealed class Move : IEquatable<Move>
 {
     public Move(Square from, IReadOnlyList<Square> path, IReadOnlyList<Square> captured)

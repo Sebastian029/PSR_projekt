@@ -99,5 +99,4 @@ app.Map("/ws", async (
 
 app.Run();
 
-/// <summary>Exposed so integration tests can host the server in memory.</summary>
 public partial class Program;

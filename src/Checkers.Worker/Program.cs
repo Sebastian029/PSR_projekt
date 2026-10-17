@@ -13,5 +13,4 @@ app.MapGet("/", () => "Checkers search worker (gRPC over HTTP/2). Use a gRPC cli
 
 app.Run();
 
-/// <summary>Exposed so integration tests can host the worker in memory.</summary>
 public partial class Program;

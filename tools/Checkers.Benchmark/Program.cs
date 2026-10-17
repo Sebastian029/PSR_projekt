@@ -7,11 +7,6 @@ using Checkers.Server.Distribution;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
-// Usage:
-//   dotnet run -c Release --project tools/Checkers.Benchmark -- --depth 7 --granulation 2 --positions 5 \
-//       --workers http://127.0.0.1:5001,http://127.0.0.1:5002
-// Without --workers only the local baseline is measured.
-
 var depth = 7;
 var granulation = 2;
 var positions = 5;
@@ -94,7 +89,6 @@ return 0;
 
 static IEnumerable<(Board Board, Side Side, string Label)> BenchmarkPositions(int count)
 {
-    // Deterministic mid-game positions reached by seeded random play from the opening.
     var produced = 0;
     for (var seed = 1; produced < count && seed < 1000; seed++)
     {

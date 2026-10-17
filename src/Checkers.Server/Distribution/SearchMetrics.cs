@@ -4,7 +4,6 @@ using Microsoft.Extensions.Options;
 
 namespace Checkers.Server.Distribution;
 
-/// <summary>One computer move, as recorded for performance analysis.</summary>
 public sealed record MoveMetrics(
     string GameId,
     string Side,
@@ -22,7 +21,6 @@ public interface IMetricsSink
     void Record(MoveMetrics metrics);
 }
 
-/// <summary>Appends one CSV row per computer move; does nothing when no path is configured.</summary>
 public sealed class CsvMetricsSink : IMetricsSink
 {
     private const string Header = "timestamp_utc,game_id,side,depth,granulation,jobs,nodes,elapsed_ms,score,forced,workers";

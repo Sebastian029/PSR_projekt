@@ -3,18 +3,10 @@ using Checkers.Core.Rules;
 
 namespace Checkers.Core.Ai;
 
-/// <param name="Score">Minimax value from White's point of view.</param>
-/// <param name="Nodes">Number of positions visited.</param>
-/// <param name="ComputeMs">Wall-clock time spent searching.</param>
 public readonly record struct SearchResult(int Score, long Nodes, long ComputeMs);
 
-/// <summary>A unit of distributable work: evaluate this position to the given depth.</summary>
 public sealed record SearchJob(Board Board, Side SideToMove, int Depth);
 
-/// <summary>
-/// Depth-limited minimax with alpha-beta pruning. Scores are always from White's point of view, so the
-/// result does not depend on the parity of the depth. A side that cannot move loses; quicker wins score higher.
-/// </summary>
 public static class MinimaxSearcher
 {
     public const int WinScore = 100_000;
@@ -32,7 +24,6 @@ public static class MinimaxSearcher
         return new SearchResult(score, nodes, (long)elapsed.TotalMilliseconds);
     }
 
-    /// <summary>Reference implementation without pruning. Slow; used by tests to validate the optimised search.</summary>
     internal static int PlainMinimax(Board board, Side sideToMove, int depth)
     {
         if (!MoveGenerator.HasMoves(board, sideToMove))
@@ -111,7 +102,6 @@ public static class MinimaxSearcher
         }
     }
 
-    /// <summary>Score when <paramref name="sideToMove"/> has no legal move; more remaining depth means a faster loss.</summary>
     private static int LossScore(Side sideToMove, int remainingDepth) =>
         sideToMove == Side.White ? -(WinScore + remainingDepth) : WinScore + remainingDepth;
 }

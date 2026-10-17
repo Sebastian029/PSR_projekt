@@ -133,7 +133,6 @@ public sealed class GameServerTests : IDisposable
 
         await client.SendAsync(new { type = "reset" });
 
-        // Drain until the fresh-board state arrives (white to move, nothing played yet).
         for (var i = 0; i < 50; i++)
         {
             var state = await client.ReceiveAsync();

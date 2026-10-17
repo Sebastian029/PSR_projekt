@@ -35,12 +35,12 @@ public class CheckersGameTests
     }
 
     [Theory]
-    [InlineData(2, 1, 3, 2)] // black piece, white to move
-    [InlineData(5, 2, 3, 4)] // two squares without a capture
-    [InlineData(5, 2, 6, 3)] // backwards
-    [InlineData(4, 4, 3, 3)] // empty source
-    [InlineData(5, 2, 4, 2)] // light square
-    [InlineData(5, 2, 8, 5)] // off the board
+    [InlineData(2, 1, 3, 2)]
+    [InlineData(5, 2, 3, 4)]
+    [InlineData(5, 2, 6, 3)]
+    [InlineData(4, 4, 3, 3)]
+    [InlineData(5, 2, 4, 2)]
+    [InlineData(5, 2, 8, 5)]
     public void IllegalStepsAreRejectedAndLeaveTheGameUntouched(int fromRow, int fromCol, int toRow, int toCol)
     {
         var game = new CheckersGame();
@@ -130,7 +130,6 @@ public class CheckersGameTests
         var game = CheckersGame.FromPosition(board, Side.White);
         Assert.Equal(GameStatus.InProgress, game.Status);
 
-        // White plays a quiet move; black is completely blocked and has nothing to move.
         Assert.True(game.TryPlayStep(S(5, 2), S(4, 3)).Success);
 
         Assert.True(game.IsOver);

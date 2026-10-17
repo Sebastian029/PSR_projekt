@@ -1,6 +1,5 @@
 namespace Checkers.Core.Model;
 
-/// <summary>Piece codes. The numeric values are part of the wire format shared with workers.</summary>
 public enum Piece : byte
 {
     Empty = 0,

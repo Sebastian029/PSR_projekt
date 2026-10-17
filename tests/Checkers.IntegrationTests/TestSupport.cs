@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Checkers.IntegrationTests;
 
-/// <summary>A real worker (gRPC pipeline included) hosted in memory.</summary>
 internal sealed class InMemoryWorker : IDisposable
 {
     private readonly WebApplicationFactory<SearchServiceImpl> _factory;
@@ -26,7 +25,6 @@ internal sealed class InMemoryWorker : IDisposable
     public void Dispose() => _factory.Dispose();
 }
 
-/// <summary>Maps worker addresses to in-memory workers; unknown addresses get a real (unreachable) channel.</summary>
 internal sealed class FakeChannelFactory : IWorkerChannelFactory
 {
     private readonly Dictionary<string, InMemoryWorker> _workers = new(StringComparer.OrdinalIgnoreCase);

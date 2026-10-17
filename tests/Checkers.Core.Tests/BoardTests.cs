@@ -23,7 +23,6 @@ public class BoardTests
     [Fact]
     public void WireFormatRoundTripsEveryDarkSquare()
     {
-        // Regression: the legacy 3-word packing silently dropped the last 8 dark squares (rows 6-7).
         var board = Board.Empty();
         var piece = Piece.WhiteMan;
         for (var row = 0; row < Board.Size; row++)

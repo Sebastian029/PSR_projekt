@@ -4,12 +4,6 @@ using Checkers.Core.Rules;
 
 namespace Checkers.Core.Ai;
 
-/// <param name="Depth">Search depth in plies (half-moves).</param>
-/// <param name="Granulation">
-/// How many plies the coordinator expands itself before handing the resulting positions to the executor
-/// as independent jobs. 1 = one job per root move; higher values give more, smaller jobs (better load balance,
-/// more network traffic). Values larger than the depth are clamped.
-/// </param>
 public sealed record SearchOptions(int Depth, int Granulation = 1)
 {
     public const int MaxDepth = 12;
@@ -28,29 +22,13 @@ public sealed record SearchOptions(int Depth, int Granulation = 1)
     }
 }
 
-/// <param name="Move">The chosen move.</param>
-/// <param name="Score">Minimax value of the chosen move (White's point of view); 0 when the move was forced.</param>
-/// <param name="Nodes">Positions visited across all jobs.</param>
-/// <param name="Jobs">Number of jobs handed to the executor.</param>
-/// <param name="Elapsed">Wall-clock time of the whole decision.</param>
-/// <param name="WasForced">True when there was only one legal move and no search was needed.</param>
 public sealed record BestMoveResult(Move Move, int Score, long Nodes, int Jobs, TimeSpan Elapsed, bool WasForced);
 
-/// <summary>
-/// Chooses a move with minimax. The first <see cref="SearchOptions.Granulation"/> plies are expanded
-/// here into a tree; its leaves are searched independently by an <see cref="ISearchExecutor"/>
-/// (locally or on remote workers) and the scores are folded back up the tree with min/max.
-/// </summary>
 public sealed class AiPlayer
 {
     private readonly ISearchExecutor _executor;
     private readonly Random? _tieBreaker;
 
-    /// <param name="executor">Where the search jobs run.</param>
-    /// <param name="tieBreaker">
-    /// Picks among equally good moves, which keeps computer-vs-computer games from repeating themselves.
-    /// Null = always take the first best move (deterministic; used by tests).
-    /// </param>
     public AiPlayer(ISearchExecutor executor, Random? tieBreaker = null)
     {
         _executor = executor;
@@ -107,7 +85,6 @@ public sealed class AiPlayer
             rootMoves[bestIndex], bestScore, nodes, jobs.Count, Stopwatch.GetElapsedTime(started), WasForced: false);
     }
 
-    /// <summary>Expands the tree by <paramref name="extraPlies"/> levels and returns its leaves.</summary>
     private static List<Node> Expand(List<Node> frontier, int extraPlies)
     {
         for (var ply = 0; ply < extraPlies; ply++)

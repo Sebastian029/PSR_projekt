@@ -201,8 +201,6 @@ const GameBoard = () => {
     const [serverError, setServerError] = useState("")
     const [aiStats, setAiStats] = useState(null)
 
-    // One WebSocket per game: the server keeps the game state per connection,
-    // so leaving the page closes the connection and ends the game (and any running search).
     useEffect(() => {
         const client = new WebSocketClient()
         clientRef.current = client
@@ -218,7 +216,6 @@ const GameBoard = () => {
             }
 
             if (data.error) {
-                // An error must not touch the board or turn state.
                 setServerError(data.error)
                 return
             }

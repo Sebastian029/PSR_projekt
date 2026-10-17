@@ -32,8 +32,6 @@ public class SearchTests
     [InlineData(23, 22)]
     public void ScoreIsSymmetricUnderColourSwap(int seed, int plies)
     {
-        // Regression: the legacy evaluator flipped its sign with the parity of the depth, so an
-        // odd-depth search steered the engine toward the worst move.
         var (board, side) = TestSupport.RandomPosition(seed, plies);
         var mirrored = TestSupport.Mirror(board);
 

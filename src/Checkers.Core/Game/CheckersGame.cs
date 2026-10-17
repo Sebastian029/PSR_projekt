@@ -11,26 +11,15 @@ public enum GameStatus
     Draw,
 }
 
-/// <param name="Success">Whether the step was legal and has been played.</param>
-/// <param name="Error">Why the step was rejected.</param>
-/// <param name="TurnEnded">False when the same player must keep capturing with the same piece.</param>
 public readonly record struct StepResult(bool Success, string? Error = null, bool TurnEnded = false)
 {
     public static StepResult Rejected(string error) => new(false, error);
 }
 
-/// <summary>
-/// One game of draughts. Moves are played one step at a time (a multi-capture is several steps by the
-/// same piece), which is what an interactive client sends; <see cref="PlayMove"/> plays a whole
-/// engine-generated <see cref="Move"/> as a series of steps.
-/// This class is not thread-safe; callers must serialise access.
-/// </summary>
 public sealed class CheckersGame
 {
-    /// <summary>A position that occurs this many times ends the game as a draw.</summary>
     public const int RepetitionLimit = 3;
 
-    /// <summary>Plies without a capture or a man move after which the game is drawn.</summary>
     public const int QuietPlyLimit = 80;
 
     private readonly Dictionary<string, int> _positionCounts = new();
@@ -38,7 +27,6 @@ public sealed class CheckersGame
 
     public CheckersGame() => Reset();
 
-    /// <summary>Starts a game from an arbitrary position (puzzles, tests, analysis).</summary>
     public static CheckersGame FromPosition(Board board, Side sideToMove)
     {
         var game = new CheckersGame();
@@ -50,7 +38,6 @@ public sealed class CheckersGame
 
     public Side SideToMove { get; private set; } = Side.White;
 
-    /// <summary>Set while the current player is in the middle of a multi-capture.</summary>
     public Square? MustContinueFrom { get; private set; }
 
     public GameStatus Status { get; private set; }
@@ -81,7 +68,6 @@ public sealed class CheckersGame
         }
     }
 
-    /// <summary>The moves currently legal for the side to move (full capture sequences included).</summary>
     public List<Move> GetLegalMoves() =>
         IsOver ? [] : MoveGenerator.Generate(Board, SideToMove, MustContinueFrom);
 
@@ -134,7 +120,6 @@ public sealed class CheckersGame
         return new StepResult(true, TurnEnded: true);
     }
 
-    /// <summary>Plays a complete move produced by the move generator.</summary>
     public void PlayMove(Move move)
     {
         var from = move.From;
@@ -152,7 +137,6 @@ public sealed class CheckersGame
 
     private StepResult PlayCapture(Square from, Piece piece, CaptureStep step)
     {
-        // Boards handed out earlier must stay valid snapshots, so never mutate the current one in place.
         var next = Board.Clone();
         next.Set(from, Piece.Empty);
         next.Set(step.Captured, Piece.Empty);
@@ -179,7 +163,6 @@ public sealed class CheckersGame
 
         if (progress)
         {
-            // Captures and man moves are irreversible, so earlier positions can never recur.
             _quietPlies = 0;
             _positionCounts.Clear();
         }

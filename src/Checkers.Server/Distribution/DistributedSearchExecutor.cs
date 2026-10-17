@@ -6,12 +6,6 @@ using Microsoft.Extensions.Options;
 
 namespace Checkers.Server.Distribution;
 
-/// <summary>
-/// Spreads search jobs over the remote workers with pull-based scheduling: every worker takes the next
-/// queued job as soon as it finishes the previous one, so fast machines do more work and no machine waits
-/// for the slowest. A worker that fails or times out is parked, its job goes back to the queue, and whatever
-/// no worker could finish is computed locally. The caller therefore always gets a complete answer.
-/// </summary>
 public sealed class DistributedSearchExecutor : ISearchExecutor
 {
     private readonly WorkerPool _pool;

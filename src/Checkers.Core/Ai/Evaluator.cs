@@ -2,10 +2,6 @@ using Checkers.Core.Model;
 
 namespace Checkers.Core.Ai;
 
-/// <summary>
-/// Static position evaluation. The score is always from White's point of view:
-/// positive favours White, negative favours Black. Search code maximises for White and minimises for Black.
-/// </summary>
 public static class Evaluator
 {
     public const int ManValue = 100;

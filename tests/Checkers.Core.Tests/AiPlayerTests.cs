@@ -57,7 +57,6 @@ public class AiPlayerTests
     [Fact]
     public async Task TieBreakerVariesTheMoveButNeverTheScore()
     {
-        // Four white moves lead to evaluation-identical positions.
         var board = Board.Parse(
             "...b....", "........", "........", "........", "........", "..w.w...", "........", "........");
         var deterministic = await _player.FindBestMoveAsync(board, Side.White, new SearchOptions(1));
@@ -112,7 +111,6 @@ public class AiPlayerTests
     [Fact]
     public async Task TakesTheWinningLineAtOddAndEvenDepths()
     {
-        // Stepping to (4,3) lets the black man jump it; (4,5) is safe.
         var board = Board.Parse(
             "........", "........", "........", "..b.....", "........", "....w...", "........", "........");
 

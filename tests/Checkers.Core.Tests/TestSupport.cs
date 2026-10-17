@@ -5,7 +5,6 @@ namespace Checkers.Core.Tests;
 
 internal static class TestSupport
 {
-    /// <summary>Plays random legal moves from the initial position and returns the reached position.</summary>
     public static (Board Board, Side SideToMove) RandomPosition(int seed, int plies)
     {
         var random = new Random(seed);
@@ -26,7 +25,6 @@ internal static class TestSupport
         return (board, side);
     }
 
-    /// <summary>Rotates the board by 180 degrees and swaps the colours.</summary>
     public static Board Mirror(Board board)
     {
         var mirrored = Board.Empty();

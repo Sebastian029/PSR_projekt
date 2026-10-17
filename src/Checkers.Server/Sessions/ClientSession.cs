@@ -10,11 +10,6 @@ using Microsoft.Extensions.Options;
 
 namespace Checkers.Server.Sessions;
 
-/// <summary>
-/// One browser connection = one independent game. Messages from the browser are handled one at a time;
-/// the computer's turns run in the background so that a reset or new settings can interrupt a long search.
-/// The human always plays white.
-/// </summary>
 public sealed class ClientSession : IAsyncDisposable
 {
     private const int MaxMessageBytes = 16 * 1024;
@@ -226,7 +221,6 @@ public sealed class ClientSession : IAsyncDisposable
         StartAiIfNeeded();
     }
 
-    /// <summary>Starts the computer's turn (or the whole computer-vs-computer game) in the background.</summary>
     private void StartAiIfNeeded()
     {
         if (_game.IsOver || _lifetime.IsCancellationRequested)
@@ -282,7 +276,6 @@ public sealed class ClientSession : IAsyncDisposable
         }
         finally
         {
-            // A newer run may already own the flag (the human moved right after our last turn).
             if (ReferenceEquals(_aiCts, source))
             {
                 _aiBusy = false;
@@ -290,7 +283,6 @@ public sealed class ClientSession : IAsyncDisposable
         }
     }
 
-    /// <summary>Plays one computer turn. Returns true while the computer should keep playing.</summary>
     private async Task<bool> PlayComputerTurnAsync(int generation, CancellationToken token)
     {
         Board board;
@@ -417,7 +409,6 @@ public sealed class ClientSession : IAsyncDisposable
         }
     }
 
-    /// <summary>Reads one complete text message; returns null when the peer closed the connection.</summary>
     private async Task<string?> ReceiveTextAsync(CancellationToken token)
     {
         var buffer = new byte[2048];

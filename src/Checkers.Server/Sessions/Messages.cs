@@ -7,12 +7,10 @@ using ModelBoard = Checkers.Core.Model.Board;
 
 namespace Checkers.Server.Sessions;
 
-/// <summary>Messages the browser sends.</summary>
 public sealed class ClientMessage
 {
     public string Type { get; set; } = string.Empty;
 
-    // settings
     public int? Depth { get; set; }
 
     public int? Granulation { get; set; }
@@ -21,7 +19,6 @@ public sealed class ClientMessage
 
     public bool? IsPlayerMode { get; set; }
 
-    // move
     public int FromRow { get; set; }
 
     public int FromCol { get; set; }
@@ -31,13 +28,8 @@ public sealed class ClientMessage
     public int ToCol { get; set; }
 }
 
-/// <summary>Statistics of the last computer move.</summary>
 public sealed record AiMoveStats(long ElapsedMs, long Nodes, int Jobs, int Score, bool Forced);
 
-/// <summary>
-/// Game state pushed to the browser. Property names are PascalCase on the wire (the client reads
-/// <c>data.Board</c>, <c>data.IsWhiteTurn</c>, ...).
-/// </summary>
 public sealed record GameStateMessage(
     bool Success,
     string[] Board,
@@ -66,7 +58,6 @@ public sealed record GameStateMessage(
         game.MustContinueFrom is not null,
         lastAi);
 
-    /// <summary>64 entries, row-major, naming the content of every square.</summary>
     public static string[] SerializeBoard(ModelBoard board)
     {
         var cells = new string[ModelBoard.Size * ModelBoard.Size];

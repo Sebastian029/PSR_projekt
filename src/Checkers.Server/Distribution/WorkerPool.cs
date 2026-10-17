@@ -3,7 +3,6 @@ using Microsoft.Extensions.Options;
 
 namespace Checkers.Server.Distribution;
 
-/// <summary>The configured search workers, owned for the lifetime of the application.</summary>
 public sealed class WorkerPool : IDisposable
 {
     public WorkerPool(IOptions<ServerOptions> options, IWorkerChannelFactory channels, TimeProvider? time = null)

@@ -4,7 +4,6 @@ using Google.Protobuf;
 
 namespace Checkers.Contracts;
 
-/// <summary>Conversions between the engine types and the wire messages.</summary>
 public static class ProtoMapping
 {
     public static SearchRequest ToRequest(SearchJob job, string taskId) => new()
@@ -15,7 +14,6 @@ public static class ProtoMapping
         TaskId = taskId,
     };
 
-    /// <exception cref="ArgumentException">The request is malformed.</exception>
     public static SearchJob ToJob(SearchRequest request)
     {
         if (request.Depth is < 0 or > SearchOptions.MaxDepth)

@@ -2,26 +2,14 @@ using Checkers.Core.Model;
 
 namespace Checkers.Core.Rules;
 
-/// <summary>A single capturing jump: the landing square and the piece that is removed.</summary>
 public readonly record struct CaptureStep(Square To, Square Captured);
 
-/// <summary>
-/// Rules of the variant implemented here:
-/// 8x8 board, white moves first; men move and capture forward only; kings move and capture along
-/// any distance ("flying kings"); capturing is mandatory (any capture, no majority rule);
-/// a capturing piece keeps jumping until it cannot; a man that reaches the last row is promoted
-/// and its turn ends. A player without a legal move loses.
-/// </summary>
 public static class MoveGenerator
 {
     private static readonly (int Row, int Col)[] Diagonals = [(-1, -1), (-1, 1), (1, -1), (1, 1)];
 
     private static readonly int[] ColumnDeltas = [-1, 1];
 
-    /// <summary>
-    /// All legal moves for <paramref name="side"/>. When <paramref name="mustContinueFrom"/> is set the
-    /// player is in the middle of a capture sequence and only that piece may move, and only by capturing.
-    /// </summary>
     public static List<Move> Generate(Board board, Side side, Square? mustContinueFrom = null)
     {
         var captures = GenerateCaptures(board, side, mustContinueFrom);
@@ -96,7 +84,6 @@ public static class MoveGenerator
         return moves;
     }
 
-    /// <summary>Single capturing jumps available to the piece standing on <paramref name="from"/>.</summary>
     public static List<CaptureStep> GetCaptureSteps(Board board, Square from)
     {
         var steps = new List<CaptureStep>();
@@ -149,11 +136,9 @@ public static class MoveGenerator
         return steps;
     }
 
-    /// <summary>True when the piece becomes a king by standing on <paramref name="square"/>.</summary>
     public static bool Promotes(Piece piece, Square square) =>
         piece.IsMan() && square.Row == piece.SideOf().PromotionRow();
 
-    /// <summary>Returns a new board with the whole move applied (captures removed, promotion done).</summary>
     public static Board Apply(Board board, Move move)
     {
         var result = board.Clone();
@@ -198,10 +183,6 @@ public static class MoveGenerator
         return false;
     }
 
-    /// <summary>
-    /// Depth-first enumeration of capture sequences. The scratch board is mutated and restored, so the
-    /// captured pieces vanish immediately and cannot be jumped twice.
-    /// </summary>
     private static void ExtendCapture(
         Board scratch, Piece piece, Square origin, Square current, List<Square> path, List<Square> captured, List<Move> output)
     {

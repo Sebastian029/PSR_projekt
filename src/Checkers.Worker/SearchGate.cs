@@ -2,7 +2,6 @@ using Microsoft.Extensions.Options;
 
 namespace Checkers.Worker;
 
-/// <summary>Limits how many searches run concurrently on this worker.</summary>
 public sealed class SearchGate : IDisposable
 {
     private readonly SemaphoreSlim _semaphore;

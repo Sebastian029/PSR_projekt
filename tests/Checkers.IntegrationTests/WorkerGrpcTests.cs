@@ -41,8 +41,6 @@ public sealed class WorkerGrpcTests : IDisposable
     [Fact]
     public async Task SearchSeesTheWholeBoardIncludingTheLastRows()
     {
-        // Regression: the legacy board packing lost rows 6-7. A lone black king on row 7 next to a
-        // white man that can be captured must change the result compared with the same board without it.
         var withPiece = Board.Parse(
             "........", "........", "........", "........", "........", "..w.....", "........", "B.......");
         var without = Board.Parse(

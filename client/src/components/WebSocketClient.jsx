@@ -2,11 +2,6 @@ const DEFAULT_URL = "ws://localhost:5162/ws"
 
 const serverUrl = import.meta.env.VITE_WS_URL || DEFAULT_URL
 
-/**
- * Thin wrapper around a WebSocket to the game server.
- * Messages sent before the connection is open are queued and flushed on open.
- * One instance = one connection = one game on the server.
- */
 class WebSocketClient {
     constructor(url = serverUrl) {
         this.queue = []

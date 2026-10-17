@@ -5,7 +5,6 @@ using Grpc.Net.Client;
 
 namespace Checkers.Server.Distribution;
 
-/// <summary>Creates gRPC channels; replaced in tests to talk to an in-memory worker.</summary>
 public interface IWorkerChannelFactory
 {
     GrpcChannel Create(string address);
@@ -25,7 +24,6 @@ public sealed class WorkerChannelFactory : IWorkerChannelFactory
     });
 }
 
-/// <summary>One remote worker plus its health: after a failure it is skipped for a cooldown period.</summary>
 public sealed class WorkerClient : IDisposable
 {
     private readonly GrpcChannel _channel;
