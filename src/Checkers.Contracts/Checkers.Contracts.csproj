@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Checkers.Contracts</RootNamespace>
+    <Description>gRPC contract between the game server (coordinator) and search workers.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.30.2" />
+    <PackageReference Include="Grpc.Core.Api" Version="2.70.0" />
+    <PackageReference Include="Grpc.Tools" Version="2.70.0" PrivateAssets="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="Protos\search.proto" GrpcServices="Both" />
+    <ProjectReference Include="..\Checkers.Core\Checkers.Core.csproj" />
+  </ItemGroup>
+
+</Project>

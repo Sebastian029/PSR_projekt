@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Checkers.Benchmark</RootNamespace>
+    <Description>Measures how much faster a move is found with remote workers than on the local machine.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Checkers.Server\Checkers.Server.csproj" />
+  </ItemGroup>
+
+</Project>

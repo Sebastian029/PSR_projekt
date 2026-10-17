@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+option csharp_namespace = "Checkers.Contracts";
+
+package checkers.v1;
+
+// A search worker evaluates independent sub-trees of the game tree on behalf of the coordinator.
+service SearchService {
+  // Minimax value of one position, searched to a fixed depth.
+  rpc Search (SearchRequest) returns (SearchResponse);
+
+  // Liveness probe and worker description.
+  rpc Ping (PingRequest) returns (PingResponse);
+}
+
+message SearchRequest {
+  // 32 bytes, one per dark square in row-major order; 0 empty, 1 white man, 2 white king,
+  // 3 black man, 4 black king.
+  bytes board = 1;
+  bool white_to_move = 2;
+  // Remaining plies to search (0 = static evaluation only).
+  int32 depth = 3;
+  // Correlation id, echoed in worker logs.
+  string task_id = 4;
+}
+
+message SearchResponse {
+  // Minimax value from White's point of view.
+  int32 score = 1;
+  int64 nodes = 2;
+  // Time spent computing on the worker, excluding network and queueing.
+  int64 compute_ms = 3;
+  string worker = 4;
+}
+
+message PingRequest {}
+
+message PingResponse {
+  string worker = 1;
+  int32 cores = 2;
+  string version = 3;
+}

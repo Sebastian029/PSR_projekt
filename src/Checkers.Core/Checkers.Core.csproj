@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Checkers.Core</RootNamespace>
+    <Description>Game rules, move generation and minimax search for 8x8 draughts. No I/O or framework dependencies.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Checkers.Core.Tests" />
+  </ItemGroup>
+
+</Project>
