@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+option csharp_namespace = "Checkers.Contracts";
+
+package checkers.v1;
+
+service SearchService {
+  rpc Search (SearchRequest) returns (SearchResponse);
+
+  rpc Ping (PingRequest) returns (PingResponse);
+}
+
+message SearchRequest {
+  bytes board = 1;
+  bool white_to_move = 2;
+  int32 depth = 3;
+  string task_id = 4;
+}
+
+message SearchResponse {
+  int32 score = 1;
+  int64 nodes = 2;
+  int64 compute_ms = 3;
+  string worker = 4;
+}
+
+message PingRequest {}
+
+message PingResponse {
+  string worker = 1;
+  int32 cores = 2;
+  string version = 3;
+}
